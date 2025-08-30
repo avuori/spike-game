@@ -159,6 +159,10 @@ function init() {
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('click', handleCanvasClick); // Fallback for mobile
+
+    // Backup touch listeners on document (for some mobile browsers)
+    document.addEventListener('touchstart', handleDocumentTouchStart, { passive: false });
     restartBtn.addEventListener('click', restartGame);
     //musicToggleBtn.addEventListener('click', toggleMusic);
     window.addEventListener('resize', resizeCanvas);
@@ -217,6 +221,7 @@ function handleKeyPress(event) {
 // Handle touch start events
 function handleTouchStart(event) {
     event.preventDefault();
+    event.stopPropagation();
     if (gameState === 'playing') {
         character.velocityY = JUMP_FORCE;
         playJumpSound();
@@ -226,11 +231,14 @@ function handleTouchStart(event) {
 // Handle touch end events (for potential future features)
 function handleTouchEnd(event) {
     event.preventDefault();
+    event.stopPropagation();
     // Currently no action needed on touch end, but prevents default behavior
 }
 
 // Handle mouse down events (for desktop click support)
 function handleMouseDown(event) {
+    event.preventDefault();
+    event.stopPropagation();
     if (gameState === 'playing') {
         character.velocityY = JUMP_FORCE;
         playJumpSound();
@@ -239,7 +247,29 @@ function handleMouseDown(event) {
 
 // Handle mouse up events (for potential future features)
 function handleMouseUp(event) {
+    event.preventDefault();
+    event.stopPropagation();
     // Currently no action needed on mouse up, but prevents default behavior
+}
+
+// Handle canvas click events (fallback for mobile)
+function handleCanvasClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (gameState === 'playing') {
+        character.velocityY = JUMP_FORCE;
+        playJumpSound();
+    }
+}
+
+// Handle document touch events (backup for mobile browsers)
+function handleDocumentTouchStart(event) {
+    // Only handle if the target is the canvas or game container and game is playing
+    if (gameState === 'playing' && (event.target === canvas || event.target.id === 'game-container')) {
+        event.preventDefault();
+        character.velocityY = JUMP_FORCE;
+        playJumpSound();
+    }
 }
 
 // Play jump sound effect
