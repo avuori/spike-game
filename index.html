@@ -11,17 +11,19 @@
             background: linear-gradient(to bottom, #87CEEB, #98FB98);
             font-family: Arial, sans-serif;
             overflow: hidden;
+            touch-action: none; /* Prevent zoom on double-tap */
         }
 
         #game-container {
             position: relative;
-            width: 800px;
-            height: 600px;
+            width: min(800px, 90vw);
+            height: min(600px, calc(90vw * 0.75));
             margin: 20px auto;
             border: 2px solid #333;
             border-radius: 10px;
             background: #f0f8ff;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            max-width: 100%;
         }
 
         #game-canvas {

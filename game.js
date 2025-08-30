@@ -1,16 +1,25 @@
-// Game constants
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
-const CHARACTER_SIZE = 50;
-const CHARACTER_COLLISION_SIZE = 35; // Smaller collision box for more precise detection
-const OBSTACLE_WIDTH = 25;
-const OBSTACLE_HEIGHT = 70;
-const HEART_SIZE = 30;
+// Game constants - will be scaled based on canvas size
+let CANVAS_WIDTH = 800;
+let CANVAS_HEIGHT = 600;
+const BASE_CHARACTER_SIZE = 50;
+const BASE_CHARACTER_COLLISION_SIZE = 35;
+const BASE_OBSTACLE_WIDTH = 25;
+const BASE_OBSTACLE_HEIGHT = 70;
+const BASE_HEART_SIZE = 30;
 const GRAVITY = 0.3;
 const JUMP_FORCE = -8;
 const BASE_GAME_SPEED = 3;
 const MAX_GAME_SPEED = 25; // Higher maximum speed cap for continuous progression
 const SPEED_INCREASE_RATE = 0.1; // How quickly speed increases with score
+
+// Scale factors based on actual canvas size
+let SCALE_X = 1;
+let SCALE_Y = 1;
+let CHARACTER_SIZE = BASE_CHARACTER_SIZE;
+let CHARACTER_COLLISION_SIZE = BASE_CHARACTER_COLLISION_SIZE;
+let OBSTACLE_WIDTH = BASE_OBSTACLE_WIDTH;
+let OBSTACLE_HEIGHT = BASE_OBSTACLE_HEIGHT;
+let HEART_SIZE = BASE_HEART_SIZE;
 
 // Game state
 let gameState = 'menu'; // menu, playing, gameOver
@@ -69,6 +78,54 @@ function updateSpeedDisplay() {
     speedDisplayElement.textContent = speedMultiplier + 'x';
 }
 
+// Resize canvas and update game constants
+function resizeCanvas() {
+    const container = document.getElementById('game-container');
+    if (!container) return;
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    // Set canvas display size
+    canvas.style.width = containerWidth + 'px';
+    canvas.style.height = containerHeight + 'px';
+
+    // Set canvas actual size (for rendering)
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+
+    // Update scale factors
+    SCALE_X = containerWidth / 800;
+    SCALE_Y = containerHeight / 600;
+
+    // Update game constants based on scale
+    CHARACTER_SIZE = BASE_CHARACTER_SIZE * Math.min(SCALE_X, SCALE_Y);
+    CHARACTER_COLLISION_SIZE = BASE_CHARACTER_COLLISION_SIZE * Math.min(SCALE_X, SCALE_Y);
+    OBSTACLE_WIDTH = BASE_OBSTACLE_WIDTH * SCALE_X;
+    OBSTACLE_HEIGHT = BASE_OBSTACLE_HEIGHT * SCALE_Y;
+    HEART_SIZE = BASE_HEART_SIZE * Math.min(SCALE_X, SCALE_Y);
+
+    // Update canvas dimensions for game logic
+    CANVAS_WIDTH = containerWidth;
+    CANVAS_HEIGHT = containerHeight;
+
+    // Update sun position
+    sun.x = CANVAS_WIDTH - 120 * SCALE_X;
+    sun.y = 80 * SCALE_Y;
+    sun.radius = 40 * Math.min(SCALE_X, SCALE_Y);
+
+    // Update character position if needed
+    if (character.x > CANVAS_WIDTH - CHARACTER_SIZE) {
+        character.x = CANVAS_WIDTH - CHARACTER_SIZE;
+    }
+    if (character.y > CANVAS_HEIGHT - CHARACTER_SIZE) {
+        character.y = CANVAS_HEIGHT - CHARACTER_SIZE;
+    }
+    if (character.y < 0) {
+        character.y = 0;
+    }
+}
+
 // Initialize game
 function init() {
     // Initialize DOM elements
@@ -91,12 +148,20 @@ function init() {
     musicToggleBtn = document.getElementById('music-toggle');
     speedDisplayElement = document.getElementById('speed-display');
 
+    // Resize canvas initially
+    resizeCanvas();
+
     // Set up event listeners
     document.getElementById('cow-option').addEventListener('click', () => selectCharacter('cow'));
     document.getElementById('snow-white-option').addEventListener('click', () => selectCharacter('snow_white'));
     document.addEventListener('keydown', handleKeyPress);
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mouseup', handleMouseUp);
     restartBtn.addEventListener('click', restartGame);
     //musicToggleBtn.addEventListener('click', toggleMusic);
+    window.addEventListener('resize', resizeCanvas);
 
     // Initialize audio context
     try {
@@ -147,6 +212,34 @@ function handleKeyPress(event) {
     } else if (gameState === 'gameOver' && event.code === 'Enter') {
         restartGame();
     }
+}
+
+// Handle touch start events
+function handleTouchStart(event) {
+    event.preventDefault();
+    if (gameState === 'playing') {
+        character.velocityY = JUMP_FORCE;
+        playJumpSound();
+    }
+}
+
+// Handle touch end events (for potential future features)
+function handleTouchEnd(event) {
+    event.preventDefault();
+    // Currently no action needed on touch end, but prevents default behavior
+}
+
+// Handle mouse down events (for desktop click support)
+function handleMouseDown(event) {
+    if (gameState === 'playing') {
+        character.velocityY = JUMP_FORCE;
+        playJumpSound();
+    }
+}
+
+// Handle mouse up events (for potential future features)
+function handleMouseUp(event) {
+    // Currently no action needed on mouse up, but prevents default behavior
 }
 
 // Play jump sound effect
@@ -546,7 +639,7 @@ function restartGame() {
     lastMusicSpeed = BASE_GAME_SPEED; // Reset music speed tracking
 
     // Reset character
-    character.x = 100;
+    character.x = 100 * SCALE_X; // Scale initial X position
     character.y = CANVAS_HEIGHT / 2;
     character.velocityY = 0;
     character.image = null;
