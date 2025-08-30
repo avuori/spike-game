@@ -83,13 +83,13 @@ function resizeCanvas() {
     const container = document.getElementById('game-container');
     if (!container) return;
 
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
+    const containerWidth = window.innerWidth;
+    const containerHeight = window.innerHeight;
 
     // Use device pixel ratio for crisp rendering on high-DPI displays
     const devicePixelRatio = window.devicePixelRatio || 1;
 
-    // Set canvas display size
+    // Set canvas display size to full screen
     canvas.style.width = containerWidth + 'px';
     canvas.style.height = containerHeight + 'px';
 
@@ -846,10 +846,6 @@ function render() {
 
     // Clear canvas
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // Draw background
-    ctx.fillStyle = '#87CEEB';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Draw sun
     drawSun();
