@@ -26,24 +26,42 @@ let gameState = 'menu'; // menu, playing, gameOver
 let selectedCharacter = null;
 let score = 0;
 
+// Power-up system
+let activePowerUps = [];
+let powerUpSpawnTimer = 0;
+
 // Game objects
 let character = {
     x: 100,
     y: CANVAS_HEIGHT / 2,
     velocityY: 0,
-    image: null
+    image: null,
+    trail: [],
+    glowIntensity: 0,
+    shield: false,
+    speedBoost: false,
+    magnet: false,
+    rainbow: false
 };
 
 let obstacles = [];
 let hearts = [];
 let hurricanes = [];
+let particles = []; // Particle system for effects
+let powerUps = []; // Power-up system
 
-// Sun object
+// Sun object with enhanced properties
 let sun = {
     x: CANVAS_WIDTH - 120,
     y: 80,
-    radius: 40
+    radius: 40,
+    glowRadius: 60,
+    pulseOffset: 0
 };
+
+// Background elements
+let stars = [];
+let backgroundElements = [];
 
 // DOM elements (initialized in init() function)
 let canvas, ctx, menuScreen, gameUI, gameOver;
@@ -224,9 +242,197 @@ function selectCharacter(characterType) {
     };
 }
 
+// Initialize particle system and background elements
+function initializeEffects() {
+    // Initialize stars for background
+    for (let i = 0; i < 50; i++) {
+        stars.push({
+            x: Math.random() * CANVAS_WIDTH,
+            y: Math.random() * CANVAS_HEIGHT * 0.6,
+            size: Math.random() * 2 + 1,
+            opacity: Math.random() * 0.8 + 0.2,
+            twinkleSpeed: Math.random() * 0.02 + 0.01
+        });
+    }
+
+    // Initialize floating background elements
+    for (let i = 0; i < 8; i++) {
+        backgroundElements.push({
+            x: Math.random() * CANVAS_WIDTH,
+            y: Math.random() * CANVAS_HEIGHT,
+            size: Math.random() * 40 + 20,
+            speed: Math.random() * 0.5 + 0.2,
+            opacity: Math.random() * 0.3 + 0.1,
+            color: `hsl(${Math.random() * 60 + 200}, 70%, ${Math.random() * 30 + 50}%)`
+        });
+    }
+}
+
+// Particle system for effects
+function createParticle(x, y, vx, vy, color, size, life, type = 'spark') {
+    particles.push({
+        x: x,
+        y: y,
+        vx: vx,
+        vy: vy,
+        color: color,
+        size: size,
+        life: life,
+        maxLife: life,
+        type: type,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.2
+    });
+}
+
+// Create particle trail for character
+function createCharacterTrail() {
+    if (character.image && gameState === 'playing') {
+        character.trail.push({
+            x: character.x + CHARACTER_SIZE / 2,
+            y: character.y + CHARACTER_SIZE / 2,
+            life: 20,
+            maxLife: 20,
+            size: CHARACTER_SIZE * 0.3
+        });
+
+        // Limit trail length
+        if (character.trail.length > 15) {
+            character.trail.shift();
+        }
+    }
+}
+
+// Create jump particles
+function createJumpParticles() {
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const speed = Math.random() * 3 + 2;
+        createParticle(
+            character.x + CHARACTER_SIZE / 2,
+            character.y + CHARACTER_SIZE,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed - 1,
+            '#FFD700',
+            Math.random() * 4 + 2,
+            Math.random() * 30 + 20,
+            'spark'
+        );
+    }
+}
+
+// Create heart collection particles
+function createHeartParticles(x, y) {
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const speed = Math.random() * 4 + 2;
+        createParticle(
+            x,
+            y,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            '#FF69B4',
+            Math.random() * 6 + 3,
+            Math.random() * 40 + 30,
+            'heart'
+        );
+    }
+}
+
+// Create power-up particles
+function createPowerUpParticles(x, y, type) {
+    const colors = {
+        shield: '#00FF00',
+        speed: '#FFFF00',
+        magnet: '#FF00FF',
+        rainbow: '#FF6B35'
+    };
+
+    const color = colors[type] || '#FFFFFF';
+
+    for (let i = 0; i < 15; i++) {
+        const angle = (i / 15) * Math.PI * 2;
+        const speed = Math.random() * 5 + 3;
+        createParticle(
+            x,
+            y,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            color,
+            Math.random() * 8 + 4,
+            Math.random() * 45 + 35,
+            'powerup'
+        );
+    }
+}
+
+// Activate power-up
+function activatePowerUp(type) {
+    const powerUp = {
+        type: type,
+        duration: 500, // frames
+        startTime: Date.now()
+    };
+
+    activePowerUps.push(powerUp);
+
+    // Visual feedback
+    if (type === 'shield') {
+        character.shield = true;
+    } else if (type === 'speed') {
+        character.speedBoost = true;
+    } else if (type === 'magnet') {
+        character.magnet = true;
+    } else if (type === 'rainbow') {
+        character.rainbow = true;
+    }
+
+    // Sound effect
+    playPowerUpSound();
+}
+
+// Spawn power-up
+function spawnPowerUp() {
+    const types = ['shield', 'speed', 'magnet', 'rainbow'];
+    const type = types[Math.floor(Math.random() * types.length)];
+
+    const y = Math.random() * (CANVAS_HEIGHT - 40);
+    powerUps.push({
+        x: CANVAS_WIDTH,
+        y: y,
+        width: 40,
+        height: 40,
+        type: type,
+        rotation: 0,
+        glowIntensity: 0
+    });
+}
+
+// Play power-up sound
+function playPowerUpSound() {
+    if (audioContext) {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Rising power-up sound
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
+
+        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    }
+}
+
 // Load character images
 function loadCharacterImages() {
     // Images are loaded when character is selected
+    initializeEffects();
 }
 
 // Handle keyboard input
@@ -234,8 +440,10 @@ function handleKeyPress(event) {
     if (gameState === 'playing') {
         if (event.code === 'Space' || event.code === 'ArrowUp') {
             event.preventDefault();
-            character.velocityY = JUMP_FORCE;
+            const jumpPower = character.speedBoost ? JUMP_FORCE * 1.3 : JUMP_FORCE;
+            character.velocityY = jumpPower;
             playJumpSound();
+            createJumpParticles();
         }
     } else if (gameState === 'gameOver' && event.code === 'Enter') {
         restartGame();
@@ -247,8 +455,10 @@ function handleTouchStart(event) {
     event.preventDefault();
     event.stopPropagation();
     if (gameState === 'playing') {
-        character.velocityY = JUMP_FORCE;
+        const jumpPower = character.speedBoost ? JUMP_FORCE * 1.3 : JUMP_FORCE;
+        character.velocityY = jumpPower;
         playJumpSound();
+        createJumpParticles();
     }
 }
 
@@ -264,8 +474,10 @@ function handleMouseDown(event) {
     event.preventDefault();
     event.stopPropagation();
     if (gameState === 'playing') {
-        character.velocityY = JUMP_FORCE;
+        const jumpPower = character.speedBoost ? JUMP_FORCE * 1.3 : JUMP_FORCE;
+        character.velocityY = jumpPower;
         playJumpSound();
+        createJumpParticles();
     }
 }
 
@@ -494,6 +706,68 @@ function playHurricaneSound() {
 
 // Update game objects
 function update() {
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.1; // Gravity effect
+        particle.life--;
+        particle.rotation += particle.rotationSpeed;
+
+        // Remove dead particles
+        if (particle.life <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
+    // Update character trail
+    for (let i = character.trail.length - 1; i >= 0; i--) {
+        const trail = character.trail[i];
+        trail.life--;
+        if (trail.life <= 0) {
+            character.trail.splice(i, 1);
+        }
+    }
+
+    // Update character glow based on speed
+    character.glowIntensity = Math.abs(character.velocityY) * 0.1;
+
+    // Update sun pulsing
+    sun.pulseOffset += 0.05;
+
+    // Update power-ups
+    for (let i = activePowerUps.length - 1; i >= 0; i--) {
+        const powerUp = activePowerUps[i];
+        powerUp.duration--;
+
+        if (powerUp.duration <= 0) {
+            // Deactivate power-up
+            if (powerUp.type === 'shield') {
+                character.shield = false;
+            } else if (powerUp.type === 'speed') {
+                character.speedBoost = false;
+            } else if (powerUp.type === 'magnet') {
+                character.magnet = false;
+            } else if (powerUp.type === 'rainbow') {
+                character.rainbow = false;
+            }
+            activePowerUps.splice(i, 1);
+        }
+    }
+
+    // Update power-up objects
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+        const powerUp = powerUps[i];
+        powerUp.x -= getGameSpeed() * 0.8; // Slightly slower than obstacles
+        powerUp.rotation += 0.1;
+        powerUp.glowIntensity = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+
+        if (powerUp.x + powerUp.width < 0) {
+            powerUps.splice(i, 1);
+        }
+    }
+
     // Allow hurricanes to move during all game states to prevent them from appearing frozen
     // Update hurricanes with realistic movement
     for (let i = hurricanes.length - 1; i >= 0; i--) {
@@ -540,6 +814,9 @@ function update() {
         character.velocityY = 0;
     }
 
+    // Create character trail
+    createCharacterTrail();
+
     // Spawn obstacles (reduced frequency for easier gameplay)
     if (Math.random() < 0.008) {
         spawnObstacle();
@@ -548,6 +825,13 @@ function update() {
     // Spawn hearts (slightly increased for better reward balance)
     if (Math.random() < 0.018) {
         spawnHeart();
+    }
+
+    // Spawn power-ups (rarer than hearts)
+    powerUpSpawnTimer++;
+    if (powerUpSpawnTimer > 800 && Math.random() < 0.006) { // Every ~800 frames with 0.6% chance
+        spawnPowerUp();
+        powerUpSpawnTimer = 0;
     }
 
     // Spawn hurricanes (rare but dangerous) - only one at a time
@@ -646,22 +930,54 @@ function checkCollisions() {
             charTop < heart.y + heart.height &&
             charBottom > heart.y) {
             // Collect heart
+            const heartX = heart.x + heart.width / 2;
+            const heartY = heart.y + heart.height / 2;
             hearts.splice(i, 1);
             score += 1;
             if (scoreElement) scoreElement.textContent = score;
             updateSpeedDisplay();
             playHeartSound();
+            createHeartParticles(heartX, heartY);
         }
     }
 
-    // Check hurricane collisions (dangerous!)
+    // Check power-up collisions
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+        const powerUp = powerUps[i];
+        if (charLeft < powerUp.x + powerUp.width &&
+            charRight > powerUp.x &&
+            charTop < powerUp.y + powerUp.height &&
+            charBottom > powerUp.y) {
+            // Collect power-up
+            const powerUpX = powerUp.x + powerUp.width / 2;
+            const powerUpY = powerUp.y + powerUp.height / 2;
+            activatePowerUp(powerUp.type);
+            powerUps.splice(i, 1);
+            score += 5; // Power-ups worth more points
+            if (scoreElement) scoreElement.textContent = score;
+            updateSpeedDisplay();
+            createPowerUpParticles(powerUpX, powerUpY, powerUp.type);
+        }
+    }
+
+    // Check hurricane collisions (dangerous!) - but respect shield
     for (let hurricane of hurricanes) {
         if (charLeft < hurricane.x + hurricane.size &&
             charRight > hurricane.x &&
             charTop < hurricane.y + hurricane.size &&
             charBottom > hurricane.y) {
-            gameOverFunction();
-            return;
+            if (!character.shield) {
+                gameOverFunction();
+                return;
+            } else {
+                // Shield protects against hurricane
+                character.shield = false; // Consume shield
+                // Remove hurricane after hitting shield
+                hurricanes.splice(hurricanes.indexOf(hurricane), 1);
+                // Create shield break particles
+                createParticle(character.x + CHARACTER_SIZE / 2, character.y + CHARACTER_SIZE / 2,
+                              0, 0, '#00FF00', 20, 30, 'spark');
+            }
         }
     }
 }
@@ -697,11 +1013,21 @@ function restartGame() {
     character.y = CANVAS_HEIGHT / 2;
     character.velocityY = 0;
     character.image = null;
+    character.shield = false;
+    character.speedBoost = false;
+    character.magnet = false;
+    character.rainbow = false;
 
     // Clear objects
     obstacles = [];
     hearts = [];
     hurricanes = [];
+    powerUps = [];
+    particles = [];
+
+    // Reset power-up system
+    activePowerUps = [];
+    powerUpSpawnTimer = 0;
 
     // Stop background music when returning to menu
     stopBackgroundMusic();
@@ -721,19 +1047,36 @@ function restartGame() {
 
 // Draw sun
 function drawSun() {
-    // Main sun body
-    ctx.fillStyle = '#FFD700';
+    const pulse = Math.sin(sun.pulseOffset) * 0.2 + 0.8;
+
+    // Sun glow effect (outer)
+    const gradient1 = ctx.createRadialGradient(sun.x, sun.y, 0, sun.x, sun.y, sun.glowRadius * pulse);
+    gradient1.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
+    gradient1.addColorStop(0.5, 'rgba(255, 215, 0, 0.4)');
+    gradient1.addColorStop(1, 'rgba(255, 215, 0, 0)');
+    ctx.fillStyle = gradient1;
+    ctx.beginPath();
+    ctx.arc(sun.x, sun.y, sun.glowRadius * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main sun body with gradient
+    const gradient2 = ctx.createRadialGradient(sun.x - sun.radius * 0.3, sun.y - sun.radius * 0.3, 0, sun.x, sun.y, sun.radius);
+    gradient2.addColorStop(0, '#FFF8DC');
+    gradient2.addColorStop(0.7, '#FFD700');
+    gradient2.addColorStop(1, '#FFA500');
+    ctx.fillStyle = gradient2;
     ctx.beginPath();
     ctx.arc(sun.x, sun.y, sun.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Sun rays
+    // Sun rays with animation
     ctx.strokeStyle = '#FFA500';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
+    const time = Date.now() * 0.001;
     for (let i = 0; i < 12; i++) {
-        const angle = (i * Math.PI) / 6;
-        const rayLength = sun.radius + 15;
-        const innerLength = sun.radius + 5;
+        const angle = (i * Math.PI) / 6 + time * 0.5;
+        const rayLength = sun.radius + 15 + Math.sin(time * 2 + i) * 5;
+        const innerLength = sun.radius + 3;
 
         ctx.beginPath();
         ctx.moveTo(
@@ -747,11 +1090,138 @@ function drawSun() {
         ctx.stroke();
     }
 
-    // Sun glow effect
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+    // Inner glow
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.beginPath();
-    ctx.arc(sun.x, sun.y, sun.radius + 10, 0, Math.PI * 2);
+    ctx.arc(sun.x, sun.y, sun.radius * 0.6, 0, Math.PI * 2);
     ctx.fill();
+}
+
+// Draw particles
+function drawParticles() {
+    for (const particle of particles) {
+        const alpha = particle.life / particle.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(particle.x, particle.y);
+        ctx.rotate(particle.rotation);
+
+        if (particle.type === 'spark') {
+            // Spark particles
+            ctx.fillStyle = particle.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Add glow
+            ctx.shadowColor = particle.color;
+            ctx.shadowBlur = particle.size * 2;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        } else if (particle.type === 'heart') {
+            // Heart-shaped particles
+            ctx.fillStyle = particle.color;
+            ctx.beginPath();
+            ctx.arc(-particle.size * 0.3, -particle.size * 0.3, particle.size * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(particle.size * 0.3, -particle.size * 0.3, particle.size * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(-particle.size * 0.6, -particle.size * 0.1, particle.size * 1.2, particle.size * 0.8);
+        } else if (particle.type === 'powerup') {
+            // Power-up particles - star shapes
+            ctx.fillStyle = particle.color;
+            const spikes = 5;
+            const outerRadius = particle.size;
+            const innerRadius = particle.size * 0.5;
+
+            ctx.beginPath();
+            for (let i = 0; i < spikes * 2; i++) {
+                const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                const angle = (i * Math.PI) / spikes;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Add glow
+            ctx.shadowColor = particle.color;
+            ctx.shadowBlur = particle.size * 2;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.restore();
+    }
+}
+
+// Draw character trail
+function drawCharacterTrail() {
+    for (const trail of character.trail) {
+        const alpha = trail.life / trail.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(trail.x, trail.y, trail.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// Draw stars
+function drawStars() {
+    for (const star of stars) {
+        const twinkle = Math.sin(Date.now() * star.twinkleSpeed) * 0.3 + 0.7;
+        ctx.save();
+        ctx.globalAlpha = star.opacity * twinkle;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// Draw background elements
+function drawBackgroundElements() {
+    for (const element of backgroundElements) {
+        ctx.save();
+        ctx.globalAlpha = element.opacity;
+        ctx.fillStyle = element.color;
+        ctx.beginPath();
+        ctx.arc(element.x, element.y, element.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Update position for floating effect
+        element.x -= element.speed * 0.5;
+        if (element.x < -element.size) {
+            element.x = CANVAS_WIDTH + element.size;
+            element.y = Math.random() * CANVAS_HEIGHT;
+        }
+    }
+}
+
+// Draw character with glow effect
+function drawCharacter() {
+    if (!character.image) return;
+
+    ctx.save();
+
+    // Add glow effect based on character speed
+    if (character.glowIntensity > 0.1) {
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = character.glowIntensity * 10;
+    }
+
+    ctx.drawImage(character.image, character.x, character.y, CHARACTER_SIZE, CHARACTER_SIZE);
+
+    ctx.restore();
 }
 
 // Draw hurricane with enhanced visual effects
@@ -855,66 +1325,264 @@ function drawHurricane(hurricane) {
 function render() {
     if (!ctx) return; // Don't render if canvas context is not available
 
-    // Clear canvas
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    // Clear canvas with gradient background
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+    bgGradient.addColorStop(0, '#87CEEB');
+    bgGradient.addColorStop(0.7, '#98FB98');
+    bgGradient.addColorStop(1, '#90EE90');
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Draw stars
+    drawStars();
+
+    // Draw background elements
+    drawBackgroundElements();
 
     // Draw sun
     drawSun();
 
-    // Draw clouds or simple background elements
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    for (let i = 0; i < 5; i++) {
-        const x = (i * 200) % CANVAS_WIDTH;
-        const y = 50 + i * 30;
-        ctx.beginPath();
-        ctx.arc(x, y, 30, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(x + 40, y, 25, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(x + 20, y - 15, 20, 0, Math.PI * 2);
-        ctx.fill();
-    }
+    // Draw enhanced clouds
+    drawEnhancedClouds();
 
     if (gameState === 'playing') {
-        // Draw character
-        if (character.image) {
-            ctx.drawImage(character.image, character.x, character.y, CHARACTER_SIZE, CHARACTER_SIZE);
-        }
+        // Draw character trail first (behind character)
+        drawCharacterTrail();
 
-        // Draw obstacles (spikes)
-        ctx.fillStyle = '#0066CC';
-        for (let obstacle of obstacles) {
-            ctx.beginPath();
-            ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
-            ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
-            ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
-            ctx.closePath();
-            ctx.fill();
-        }
+        // Draw character with glow effect
+        drawCharacter();
 
-        // Draw hearts
-        ctx.fillStyle = '#FF69B4';
-        for (let heart of hearts) {
-            ctx.beginPath();
-            ctx.arc(heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2, 0, Math.PI * 2);
-            ctx.fill();
-            // Simple heart shape
-            ctx.fillStyle = '#DC143C';
-            ctx.beginPath();
-            ctx.arc(heart.x + heart.width * 0.3, heart.y + heart.height * 0.3, heart.width * 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(heart.x + heart.width * 0.7, heart.y + heart.height * 0.3, heart.width * 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillRect(heart.x + heart.width * 0.25, heart.y + heart.height * 0.4, heart.width * 0.5, heart.height * 0.3);
-        }
+        // Draw obstacles with enhanced visuals
+        drawEnhancedObstacles();
+
+        // Draw hearts with enhanced visuals
+        drawEnhancedHearts();
+
+        // Draw power-ups
+        drawPowerUps();
     }
 
     // Draw hurricanes (visible during all game states)
     for (let hurricane of hurricanes) {
         drawHurricane(hurricane);
+    }
+
+    // Draw particles on top of everything
+    drawParticles();
+}
+
+// Draw enhanced clouds
+function drawEnhancedClouds() {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+    ctx.shadowBlur = 10;
+
+    for (let i = 0; i < 5; i++) {
+        const baseX = (i * 200 + Date.now() * 0.02) % (CANVAS_WIDTH + 100) - 50;
+        const y = 50 + i * 30 + Math.sin(Date.now() * 0.001 + i) * 10;
+
+        // Main cloud body
+        ctx.beginPath();
+        ctx.arc(baseX, y, 35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(baseX + 45, y, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(baseX + 25, y - 15, 25, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cloud puffs
+        ctx.beginPath();
+        ctx.arc(baseX - 20, y + 5, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(baseX + 65, y + 5, 18, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+}
+
+// Draw power-ups
+function drawPowerUps() {
+    for (const powerUp of powerUps) {
+        ctx.save();
+        ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
+        ctx.rotate(powerUp.rotation);
+
+        // Power-up colors and symbols
+        const colors = {
+            shield: '#00FF00',
+            speed: '#FFFF00',
+            magnet: '#FF00FF',
+            rainbow: '#FF6B35'
+        };
+
+        const color = colors[powerUp.type] || '#FFFFFF';
+
+        // Glow effect
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 20 * powerUp.glowIntensity;
+
+        // Outer ring
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, powerUp.width / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner glow
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.3 * powerUp.glowIntensity;
+        ctx.beginPath();
+        ctx.arc(0, 0, powerUp.width / 2 - 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Power-up symbol
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `${powerUp.width * 0.4}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const symbols = {
+            shield: '🛡️',
+            speed: '⚡',
+            magnet: '🧲',
+            rainbow: '🌈'
+        };
+
+        ctx.fillText(symbols[powerUp.type] || '⭐', 0, 0);
+
+        ctx.restore();
+    }
+}
+
+// Draw character with power-up effects
+function drawCharacter() {
+    if (!character.image) return;
+
+    ctx.save();
+
+    // Shield effect
+    if (character.shield) {
+        const shieldPulse = Math.sin(Date.now() * 0.01) * 0.2 + 0.8;
+        ctx.strokeStyle = `rgba(0, 255, 0, ${shieldPulse})`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#00FF00';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(character.x + CHARACTER_SIZE / 2, character.y + CHARACTER_SIZE / 2,
+                CHARACTER_SIZE / 2 + 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    // Rainbow effect
+    if (character.rainbow) {
+        const hue = (Date.now() * 0.1) % 360;
+        ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+        ctx.shadowBlur = 15;
+    }
+
+    // Speed boost glow
+    if (character.speedBoost) {
+        ctx.shadowColor = '#FFFF00';
+        ctx.shadowBlur = 20;
+    }
+
+    // Magnet effect
+    if (character.magnet) {
+        const magnetPulse = Math.sin(Date.now() * 0.02) * 5 + 5;
+        ctx.strokeStyle = `rgba(255, 0, 255, 0.6)`;
+        ctx.lineWidth = magnetPulse;
+        ctx.beginPath();
+        ctx.arc(character.x + CHARACTER_SIZE / 2, character.y + CHARACTER_SIZE / 2,
+                CHARACTER_SIZE / 2 + 15, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    // Draw the character image
+    ctx.drawImage(character.image, character.x, character.y, CHARACTER_SIZE, CHARACTER_SIZE);
+
+    ctx.restore();
+}
+
+// Draw enhanced obstacles
+function drawEnhancedObstacles() {
+    for (let obstacle of obstacles) {
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 102, 204, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(obstacle.x + 2, obstacle.y + obstacle.height + 3);
+        ctx.lineTo(obstacle.x + obstacle.width / 2 + 2, obstacle.y + 3);
+        ctx.lineTo(obstacle.x + obstacle.width + 2, obstacle.y + obstacle.height + 3);
+        ctx.closePath();
+        ctx.fill();
+
+        // Main obstacle with gradient
+        const gradient = ctx.createLinearGradient(obstacle.x, obstacle.y, obstacle.x, obstacle.y + obstacle.height);
+        gradient.addColorStop(0, '#0080FF');
+        gradient.addColorStop(1, '#004080');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
+        ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
+        ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Highlight
+        ctx.strokeStyle = '#00BFFF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y);
+        ctx.lineTo(obstacle.x + obstacle.width / 2 + 5, obstacle.y + 10);
+        ctx.stroke();
+    }
+}
+
+// Draw enhanced hearts
+function drawEnhancedHearts() {
+    for (let heart of hearts) {
+        const time = Date.now() * 0.005;
+        const pulse = Math.sin(time + heart.x * 0.01) * 0.1 + 0.9;
+
+        // Glow effect
+        ctx.shadowColor = '#FF69B4';
+        ctx.shadowBlur = 15 * pulse;
+        ctx.fillStyle = `rgba(255, 105, 180, ${0.8 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2 + 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main heart with gradient
+        const gradient = ctx.createRadialGradient(
+            heart.x + heart.width * 0.4, heart.y + heart.height * 0.3, 0,
+            heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2
+        );
+        gradient.addColorStop(0, '#FFB6C1');
+        gradient.addColorStop(0.7, '#FF69B4');
+        gradient.addColorStop(1, '#DC143C');
+        ctx.fillStyle = gradient;
+
+        // Draw heart shape
+        ctx.beginPath();
+        ctx.arc(heart.x + heart.width * 0.3, heart.y + heart.height * 0.3, heart.width * 0.25 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(heart.x + heart.width * 0.7, heart.y + heart.height * 0.3, heart.width * 0.25 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(heart.x + heart.width * 0.2, heart.y + heart.height * 0.35, heart.width * 0.6, heart.height * 0.4);
+
+        // Heart highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(heart.x + heart.width * 0.4, heart.y + heart.height * 0.4, heart.width * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
     }
 }
 
@@ -927,3 +1595,4 @@ function gameLoop() {
 
 // Start the game when page loads
 window.addEventListener('load', init);
+
