@@ -86,15 +86,24 @@ function resizeCanvas() {
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
 
+    // Use device pixel ratio for crisp rendering on high-DPI displays
+    const devicePixelRatio = window.devicePixelRatio || 1;
+
     // Set canvas display size
     canvas.style.width = containerWidth + 'px';
     canvas.style.height = containerHeight + 'px';
 
-    // Set canvas actual size (for rendering)
-    canvas.width = containerWidth;
-    canvas.height = containerHeight;
+    // Set canvas actual size (for rendering) - account for device pixel ratio
+    const renderWidth = Math.floor(containerWidth * devicePixelRatio);
+    const renderHeight = Math.floor(containerHeight * devicePixelRatio);
 
-    // Update scale factors
+    canvas.width = renderWidth;
+    canvas.height = renderHeight;
+
+    // Scale the drawing context for crisp rendering
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+
+    // Update scale factors (based on display size, not render size)
     SCALE_X = containerWidth / 800;
     SCALE_Y = containerHeight / 600;
 
@@ -105,7 +114,7 @@ function resizeCanvas() {
     OBSTACLE_HEIGHT = BASE_OBSTACLE_HEIGHT * SCALE_Y;
     HEART_SIZE = BASE_HEART_SIZE * Math.min(SCALE_X, SCALE_Y);
 
-    // Update canvas dimensions for game logic
+    // Update canvas dimensions for game logic (use display size)
     CANVAS_WIDTH = containerWidth;
     CANVAS_HEIGHT = containerHeight;
 
@@ -166,6 +175,10 @@ function init() {
     restartBtn.addEventListener('click', restartGame);
     //musicToggleBtn.addEventListener('click', toggleMusic);
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', () => {
+        // Delay resize to allow for orientation change to complete
+        setTimeout(resizeCanvas, 100);
+    });
 
     // Initialize audio context
     try {
