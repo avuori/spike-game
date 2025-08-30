@@ -112,7 +112,18 @@ function resizeCanvas() {
     CHARACTER_COLLISION_SIZE = BASE_CHARACTER_COLLISION_SIZE * Math.min(SCALE_X, SCALE_Y);
     OBSTACLE_WIDTH = BASE_OBSTACLE_WIDTH * SCALE_X;
     OBSTACLE_HEIGHT = BASE_OBSTACLE_HEIGHT * SCALE_Y;
-    HEART_SIZE = BASE_HEART_SIZE * Math.min(SCALE_X, SCALE_Y);
+
+    // Make hearts scale relative to height, especially in portrait mode
+    const aspectRatio = containerWidth / containerHeight;
+    const isPortrait = aspectRatio < 1; // Height > Width
+
+    if (isPortrait) {
+        // In portrait mode, use height-based scaling for better visibility
+        HEART_SIZE = BASE_HEART_SIZE * SCALE_Y * 0.9;
+    } else {
+        // In landscape mode, use the standard scaling
+        HEART_SIZE = BASE_HEART_SIZE * Math.min(SCALE_X, SCALE_Y);
+    }
 
     // Update canvas dimensions for game logic (use display size)
     CANVAS_WIDTH = containerWidth;
