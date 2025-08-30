@@ -242,28 +242,28 @@ function selectCharacter(characterType) {
     };
 }
 
-// Initialize particle system and background elements
+// Initialize particle system and background elements (optimized for mobile)
 function initializeEffects() {
-    // Initialize stars for background
-    for (let i = 0; i < 50; i++) {
+    // Initialize stars for background - reduced count for performance
+    for (let i = 0; i < 20; i++) {
         stars.push({
             x: Math.random() * CANVAS_WIDTH,
             y: Math.random() * CANVAS_HEIGHT * 0.6,
-            size: Math.random() * 2 + 1,
-            opacity: Math.random() * 0.8 + 0.2,
-            twinkleSpeed: Math.random() * 0.02 + 0.01
+            size: Math.random() * 1.5 + 0.5,
+            opacity: Math.random() * 0.6 + 0.3,
+            twinkleSpeed: Math.random() * 0.015 + 0.005
         });
     }
 
-    // Initialize floating background elements
-    for (let i = 0; i < 8; i++) {
+    // Initialize floating background elements - reduced count
+    for (let i = 0; i < 4; i++) {
         backgroundElements.push({
             x: Math.random() * CANVAS_WIDTH,
             y: Math.random() * CANVAS_HEIGHT,
-            size: Math.random() * 40 + 20,
-            speed: Math.random() * 0.5 + 0.2,
-            opacity: Math.random() * 0.3 + 0.1,
-            color: `hsl(${Math.random() * 60 + 200}, 70%, ${Math.random() * 30 + 50}%)`
+            size: Math.random() * 25 + 15,
+            speed: Math.random() * 0.3 + 0.1,
+            opacity: Math.random() * 0.2 + 0.05,
+            color: `hsl(${Math.random() * 40 + 210}, 60%, ${Math.random() * 20 + 60}%)`
         });
     }
 }
@@ -288,58 +288,63 @@ function createParticle(x, y, vx, vy, color, size, life, type = 'spark') {
 // Create particle trail for character
 function createCharacterTrail() {
     if (character.image && gameState === 'playing') {
-        character.trail.push({
-            x: character.x + CHARACTER_SIZE / 2,
-            y: character.y + CHARACTER_SIZE / 2,
-            life: 20,
-            maxLife: 20,
-            size: CHARACTER_SIZE * 0.3
-        });
+        // Only create trail every few frames to reduce performance impact
+        if (Math.random() < 0.6) { // 60% chance to create trail particle
+            character.trail.push({
+                x: character.x + CHARACTER_SIZE / 2,
+                y: character.y + CHARACTER_SIZE / 2,
+                life: 15, // Shorter lifetime
+                maxLife: 15,
+                size: CHARACTER_SIZE * 0.25 // Smaller size
+            });
 
-        // Limit trail length
-        if (character.trail.length > 15) {
-            character.trail.shift();
+            // Limit trail length - reduced for performance
+            if (character.trail.length > 10) {
+                character.trail.shift();
+            }
         }
     }
 }
 
-// Create jump particles
+// Create jump particles (optimized for mobile)
 function createJumpParticles() {
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const speed = Math.random() * 3 + 2;
+    // Reduced particle count for better performance
+    for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2;
+        const speed = Math.random() * 2 + 1.5;
         createParticle(
             character.x + CHARACTER_SIZE / 2,
             character.y + CHARACTER_SIZE,
             Math.cos(angle) * speed,
-            Math.sin(angle) * speed - 1,
+            Math.sin(angle) * speed - 0.5,
             '#FFD700',
-            Math.random() * 4 + 2,
-            Math.random() * 30 + 20,
+            Math.random() * 3 + 1.5,
+            Math.random() * 20 + 15, // Shorter lifetime
             'spark'
         );
     }
 }
 
-// Create heart collection particles
+// Create heart collection particles (optimized for mobile)
 function createHeartParticles(x, y) {
-    for (let i = 0; i < 12; i++) {
-        const angle = (i / 12) * Math.PI * 2;
-        const speed = Math.random() * 4 + 2;
+    // Reduced particle count and simplified physics
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const speed = Math.random() * 2.5 + 1.5;
         createParticle(
             x,
             y,
             Math.cos(angle) * speed,
-            Math.sin(angle) * speed,
+            Math.sin(angle) * speed - 0.3,
             '#FF69B4',
-            Math.random() * 6 + 3,
-            Math.random() * 40 + 30,
+            Math.random() * 4 + 2,
+            Math.random() * 25 + 15, // Shorter lifetime
             'heart'
         );
     }
 }
 
-// Create power-up particles
+// Create power-up particles (optimized for mobile)
 function createPowerUpParticles(x, y, type) {
     const colors = {
         shield: '#00FF00',
@@ -350,17 +355,18 @@ function createPowerUpParticles(x, y, type) {
 
     const color = colors[type] || '#FFFFFF';
 
-    for (let i = 0; i < 15; i++) {
-        const angle = (i / 15) * Math.PI * 2;
-        const speed = Math.random() * 5 + 3;
+    // Reduced particle count for better performance
+    for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
+        const speed = Math.random() * 3 + 1.5;
         createParticle(
             x,
             y,
             Math.cos(angle) * speed,
-            Math.sin(angle) * speed,
+            Math.sin(angle) * speed - 0.2,
             color,
-            Math.random() * 8 + 4,
-            Math.random() * 45 + 35,
+            Math.random() * 5 + 2,
+            Math.random() * 30 + 20, // Shorter lifetime
             'powerup'
         );
     }
@@ -706,14 +712,14 @@ function playHurricaneSound() {
 
 // Update game objects
 function update() {
-    // Update particles
+    // Update particles (optimized for mobile)
     for (let i = particles.length - 1; i >= 0; i--) {
         const particle = particles[i];
         particle.x += particle.vx;
         particle.y += particle.vy;
-        particle.vy += 0.1; // Gravity effect
+        particle.vy += 0.05; // Reduced gravity for better performance
         particle.life--;
-        particle.rotation += particle.rotationSpeed;
+        particle.rotation += particle.rotationSpeed * 0.5; // Slower rotation
 
         // Remove dead particles
         if (particle.life <= 0) {
@@ -1045,38 +1051,33 @@ function restartGame() {
     }
 }
 
-// Draw sun
+// Draw sun (optimized for mobile)
 function drawSun() {
-    const pulse = Math.sin(sun.pulseOffset) * 0.2 + 0.8;
+    const pulse = Math.sin(sun.pulseOffset) * 0.15 + 0.85;
 
-    // Sun glow effect (outer)
-    const gradient1 = ctx.createRadialGradient(sun.x, sun.y, 0, sun.x, sun.y, sun.glowRadius * pulse);
-    gradient1.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
-    gradient1.addColorStop(0.5, 'rgba(255, 215, 0, 0.4)');
-    gradient1.addColorStop(1, 'rgba(255, 215, 0, 0)');
-    ctx.fillStyle = gradient1;
+    // Simplified sun glow effect
+    ctx.fillStyle = `rgba(255, 215, 0, ${0.3 * pulse})`;
     ctx.beginPath();
-    ctx.arc(sun.x, sun.y, sun.glowRadius * pulse, 0, Math.PI * 2);
+    ctx.arc(sun.x, sun.y, sun.glowRadius * 0.7, 0, Math.PI * 2);
     ctx.fill();
 
-    // Main sun body with gradient
-    const gradient2 = ctx.createRadialGradient(sun.x - sun.radius * 0.3, sun.y - sun.radius * 0.3, 0, sun.x, sun.y, sun.radius);
-    gradient2.addColorStop(0, '#FFF8DC');
-    gradient2.addColorStop(0.7, '#FFD700');
-    gradient2.addColorStop(1, '#FFA500');
-    ctx.fillStyle = gradient2;
+    // Main sun body with simpler gradient
+    const gradient = ctx.createRadialGradient(sun.x, sun.y, 0, sun.x, sun.y, sun.radius);
+    gradient.addColorStop(0, '#FFD700');
+    gradient.addColorStop(1, '#FFA500');
+    ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(sun.x, sun.y, sun.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Sun rays with animation
+    // Simplified sun rays - reduced count for performance
     ctx.strokeStyle = '#FFA500';
     ctx.lineWidth = 2;
     const time = Date.now() * 0.001;
-    for (let i = 0; i < 12; i++) {
-        const angle = (i * Math.PI) / 6 + time * 0.5;
-        const rayLength = sun.radius + 15 + Math.sin(time * 2 + i) * 5;
-        const innerLength = sun.radius + 3;
+    for (let i = 0; i < 8; i++) { // Reduced from 12 to 8
+        const angle = (i * Math.PI) / 4 + time * 0.3; // Slower animation
+        const rayLength = sun.radius + 12;
+        const innerLength = sun.radius + 2;
 
         ctx.beginPath();
         ctx.moveTo(
@@ -1089,12 +1090,6 @@ function drawSun() {
         );
         ctx.stroke();
     }
-
-    // Inner glow
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.beginPath();
-    ctx.arc(sun.x, sun.y, sun.radius * 0.6, 0, Math.PI * 2);
-    ctx.fill();
 }
 
 // Draw particles
@@ -1371,45 +1366,33 @@ function render() {
     drawParticles();
 }
 
-// Draw enhanced clouds
+// Draw enhanced clouds (optimized for mobile)
 function drawEnhancedClouds() {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; // Reduced opacity
 
-    for (let i = 0; i < 5; i++) {
-        const baseX = (i * 200 + Date.now() * 0.02) % (CANVAS_WIDTH + 100) - 50;
-        const y = 50 + i * 30 + Math.sin(Date.now() * 0.001 + i) * 10;
+    for (let i = 0; i < 3; i++) { // Reduced from 5 to 3 clouds
+        const baseX = (i * 250 + Date.now() * 0.01) % (CANVAS_WIDTH + 100) - 50; // Slower movement
+        const y = 50 + i * 35;
 
-        // Main cloud body
+        // Simplified cloud - fewer circles
         ctx.beginPath();
-        ctx.arc(baseX, y, 35, 0, Math.PI * 2);
+        ctx.arc(baseX, y, 25, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(baseX + 45, y, 30, 0, Math.PI * 2);
+        ctx.arc(baseX + 35, y, 22, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(baseX + 25, y - 15, 25, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Cloud puffs
-        ctx.beginPath();
-        ctx.arc(baseX - 20, y + 5, 20, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(baseX + 65, y + 5, 18, 0, Math.PI * 2);
+        ctx.arc(baseX + 18, y - 12, 18, 0, Math.PI * 2);
         ctx.fill();
     }
-
-    ctx.shadowBlur = 0;
 }
 
-// Draw power-ups
+// Draw power-ups (optimized for mobile)
 function drawPowerUps() {
     for (const powerUp of powerUps) {
         ctx.save();
         ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
-        ctx.rotate(powerUp.rotation);
+        ctx.rotate(powerUp.rotation * 0.5); // Slower rotation for performance
 
         // Power-up colors and symbols
         const colors = {
@@ -1421,28 +1404,30 @@ function drawPowerUps() {
 
         const color = colors[powerUp.type] || '#FFFFFF';
 
-        // Glow effect
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 20 * powerUp.glowIntensity;
+        // Simplified glow effect
+        ctx.fillStyle = `rgba(${color.slice(1, 3)}, ${color.slice(3, 5)}, ${color.slice(5, 7)}, ${0.4 * powerUp.glowIntensity})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, powerUp.width / 2 + 2, 0, Math.PI * 2);
+        ctx.fill();
 
-        // Outer ring
+        // Outer ring - simplified
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(0, 0, powerUp.width / 2, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Inner glow
+        // Inner fill
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.3 * powerUp.glowIntensity;
+        ctx.globalAlpha = 0.2;
         ctx.beginPath();
-        ctx.arc(0, 0, powerUp.width / 2 - 3, 0, Math.PI * 2);
+        ctx.arc(0, 0, powerUp.width / 2 - 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Power-up symbol
+        // Power-up symbol - simplified
         ctx.globalAlpha = 1;
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${powerUp.width * 0.4}px Arial`;
+        ctx.font = `${powerUp.width * 0.35}px Arial`; // Smaller font
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -1459,49 +1444,30 @@ function drawPowerUps() {
     }
 }
 
-// Draw character with power-up effects
+// Draw character with power-up effects (optimized for mobile)
 function drawCharacter() {
     if (!character.image) return;
 
     ctx.save();
 
-    // Shield effect
+    // Only apply one effect at a time for better performance
     if (character.shield) {
-        const shieldPulse = Math.sin(Date.now() * 0.01) * 0.2 + 0.8;
+        const shieldPulse = Math.sin(Date.now() * 0.005) * 0.1 + 0.9; // Slower pulse
         ctx.strokeStyle = `rgba(0, 255, 0, ${shieldPulse})`;
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#00FF00';
-        ctx.shadowBlur = 10;
+        ctx.lineWidth = 3; // Reduced line width
         ctx.beginPath();
         ctx.arc(character.x + CHARACTER_SIZE / 2, character.y + CHARACTER_SIZE / 2,
-                CHARACTER_SIZE / 2 + 10, 0, Math.PI * 2);
+                CHARACTER_SIZE / 2 + 8, 0, Math.PI * 2); // Smaller radius
         ctx.stroke();
-        ctx.shadowBlur = 0;
-    }
-
-    // Rainbow effect
-    if (character.rainbow) {
-        const hue = (Date.now() * 0.1) % 360;
-        ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
-        ctx.shadowBlur = 15;
-    }
-
-    // Speed boost glow
-    if (character.speedBoost) {
+    } else if (character.speedBoost) {
         ctx.shadowColor = '#FFFF00';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 12; // Reduced blur
+    } else if (character.rainbow) {
+        const hue = (Date.now() * 0.05) % 360; // Slower color change
+        ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+        ctx.shadowBlur = 10;
     }
-
-    // Magnet effect
-    if (character.magnet) {
-        const magnetPulse = Math.sin(Date.now() * 0.02) * 5 + 5;
-        ctx.strokeStyle = `rgba(255, 0, 255, 0.6)`;
-        ctx.lineWidth = magnetPulse;
-        ctx.beginPath();
-        ctx.arc(character.x + CHARACTER_SIZE / 2, character.y + CHARACTER_SIZE / 2,
-                CHARACTER_SIZE / 2 + 15, 0, Math.PI * 2);
-        ctx.stroke();
-    }
+    // Magnet effect removed for performance - can be added back if needed
 
     // Draw the character image
     ctx.drawImage(character.image, character.x, character.y, CHARACTER_SIZE, CHARACTER_SIZE);
@@ -1509,23 +1475,12 @@ function drawCharacter() {
     ctx.restore();
 }
 
-// Draw enhanced obstacles
+// Draw enhanced obstacles (optimized for mobile)
 function drawEnhancedObstacles() {
     for (let obstacle of obstacles) {
-        // Shadow
-        ctx.fillStyle = 'rgba(0, 102, 204, 0.3)';
-        ctx.beginPath();
-        ctx.moveTo(obstacle.x + 2, obstacle.y + obstacle.height + 3);
-        ctx.lineTo(obstacle.x + obstacle.width / 2 + 2, obstacle.y + 3);
-        ctx.lineTo(obstacle.x + obstacle.width + 2, obstacle.y + obstacle.height + 3);
-        ctx.closePath();
-        ctx.fill();
-
-        // Main obstacle with gradient
-        const gradient = ctx.createLinearGradient(obstacle.x, obstacle.y, obstacle.x, obstacle.y + obstacle.height);
-        gradient.addColorStop(0, '#0080FF');
-        gradient.addColorStop(1, '#004080');
-        ctx.fillStyle = gradient;
+        // Simplified shadow - removed for performance
+        // Main obstacle with solid color (simplified from gradient)
+        ctx.fillStyle = '#0080FF';
         ctx.beginPath();
         ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
         ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
@@ -1533,56 +1488,45 @@ function drawEnhancedObstacles() {
         ctx.closePath();
         ctx.fill();
 
-        // Highlight
+        // Simple highlight - reduced
         ctx.strokeStyle = '#00BFFF';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5; // Reduced line width
         ctx.beginPath();
         ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y);
-        ctx.lineTo(obstacle.x + obstacle.width / 2 + 5, obstacle.y + 10);
+        ctx.lineTo(obstacle.x + obstacle.width / 2 + 3, obstacle.y + 6); // Shorter highlight
         ctx.stroke();
     }
 }
 
-// Draw enhanced hearts
+// Draw enhanced hearts (optimized for mobile)
 function drawEnhancedHearts() {
     for (let heart of hearts) {
-        const time = Date.now() * 0.005;
-        const pulse = Math.sin(time + heart.x * 0.01) * 0.1 + 0.9;
+        const time = Date.now() * 0.003; // Slower pulse for better performance
+        const pulse = Math.sin(time + heart.x * 0.005) * 0.05 + 0.95; // Reduced pulse effect
 
-        // Glow effect
-        ctx.shadowColor = '#FF69B4';
-        ctx.shadowBlur = 15 * pulse;
-        ctx.fillStyle = `rgba(255, 105, 180, ${0.8 * pulse})`;
+        // Simplified glow effect
+        ctx.fillStyle = `rgba(255, 105, 180, ${0.4 * pulse})`;
         ctx.beginPath();
-        ctx.arc(heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2 + 5, 0, Math.PI * 2);
+        ctx.arc(heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2 + 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main heart with gradient
-        const gradient = ctx.createRadialGradient(
-            heart.x + heart.width * 0.4, heart.y + heart.height * 0.3, 0,
-            heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2
-        );
-        gradient.addColorStop(0, '#FFB6C1');
-        gradient.addColorStop(0.7, '#FF69B4');
-        gradient.addColorStop(1, '#DC143C');
-        ctx.fillStyle = gradient;
+        // Main heart with solid color (simplified from gradient)
+        ctx.fillStyle = '#FF69B4';
 
-        // Draw heart shape
+        // Draw heart shape - simplified
         ctx.beginPath();
-        ctx.arc(heart.x + heart.width * 0.3, heart.y + heart.height * 0.3, heart.width * 0.25 * pulse, 0, Math.PI * 2);
+        ctx.arc(heart.x + heart.width * 0.3, heart.y + heart.height * 0.3, heart.width * 0.22, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(heart.x + heart.width * 0.7, heart.y + heart.height * 0.3, heart.width * 0.25 * pulse, 0, Math.PI * 2);
+        ctx.arc(heart.x + heart.width * 0.7, heart.y + heart.height * 0.3, heart.width * 0.22, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillRect(heart.x + heart.width * 0.2, heart.y + heart.height * 0.35, heart.width * 0.6, heart.height * 0.4);
+        ctx.fillRect(heart.x + heart.width * 0.22, heart.y + heart.height * 0.33, heart.width * 0.56, heart.height * 0.37);
 
-        // Heart highlight
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        // Simple highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.beginPath();
-        ctx.arc(heart.x + heart.width * 0.4, heart.y + heart.height * 0.4, heart.width * 0.1, 0, Math.PI * 2);
+        ctx.arc(heart.x + heart.width * 0.4, heart.y + heart.height * 0.4, heart.width * 0.08, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.shadowBlur = 0;
     }
 }
 
