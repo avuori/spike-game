@@ -70,18 +70,29 @@
             pointer-events: none;
         }
 
-        #menu-screen h1 {
-            font-size: min(8vw, 48px);
-            margin-bottom: max(4vh, 30px);
-            font-weight: 700;
+        .game-title {
+            font-size: min(12vw, 64px);
+            margin-bottom: max(2vh, 15px);
+            font-weight: 800;
             background: linear-gradient(45deg, #FFD700, #FFA500, #FF8C00);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             text-shadow: none;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
             animation: titleGlow 2s ease-in-out infinite alternate;
+            position: relative;
+            z-index: 1001;
+        }
+
+        .subtitle {
+            font-size: min(6vw, 32px);
+            margin-bottom: max(4vh, 30px);
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            letter-spacing: 1px;
             position: relative;
             z-index: 1001;
         }
@@ -119,13 +130,20 @@
             }
         }
 
-        #menu-screen h1 {
+        .game-title {
             animation: titleGlow 2s ease-in-out infinite alternate,
                        fadeInUp 1s ease-out 0.2s both;
         }
 
+        .subtitle {
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+
         .character-options-container {
             animation: fadeInUp 1s ease-out 0.5s both;
+            display: flex;
+            flex-direction: column;
+            gap: max(2vh, 20px);
         }
 
         .character-option:nth-child(1) {
@@ -134,6 +152,34 @@
 
         .character-option:nth-child(2) {
             animation: fadeInScale 0.8s ease-out 1s both;
+        }
+
+        .credits {
+            margin-top: max(4vh, 30px);
+            animation: fadeInUp 1s ease-out 1.3s both;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .credits p {
+            margin: 0;
+            font-size: min(3.5vw, 16px);
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            font-weight: 400;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .credits:hover p {
+            color: rgba(255, 215, 0, 0.9);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            transform: scale(1.05);
         }
 
 
@@ -336,8 +382,14 @@
                 font-size: min(7vw, 24px);
             }
 
-            #menu-screen h1 {
-                font-size: min(9vw, 32px);
+            .game-title {
+                font-size: min(14vw, 48px);
+                margin-bottom: max(1.5vh, 12px);
+                letter-spacing: 2px;
+            }
+
+            .subtitle {
+                font-size: min(7vw, 24px);
                 margin-bottom: max(3vh, 20px);
             }
 
@@ -346,12 +398,30 @@
                 align-items: flex-start;
                 gap: max(1vh, 8px);
             }
+
+            .credits {
+                margin-top: max(3vh, 20px);
+            }
+
+            .credits p {
+                font-size: min(4vw, 14px);
+            }
+
+            .credits .year {
+                font-size: min(3.5vw, 12px) !important;
+            }
         }
 
         /* Portrait orientation adjustments */
         @media (orientation: portrait) and (max-height: 600px) {
-            #menu-screen h1 {
-                font-size: min(6vw, 32px);
+            .game-title {
+                font-size: min(10vw, 40px);
+                margin-bottom: max(1vh, 10px);
+            }
+
+            .subtitle {
+                font-size: min(5vw, 24px);
+                margin-bottom: max(2vh, 15px);
             }
         }
 
@@ -373,7 +443,8 @@
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         <div id="menu-screen">
-            <h1>Choose Your Character</h1>
+            <h1 class="game-title">Spikes</h1>
+            <h2 class="subtitle">Choose Your Character</h2>
             <div class="character-options-container">
                 <div class="character-option" id="cow-option">
                     <div class="character-info">
@@ -395,6 +466,10 @@
                     </div>
                     <div class="character-arrow">→</div>
                 </div>
+            </div>
+            <div class="credits">
+                <p>Vibe coded by Janes, Rasmus, Eerika, Arto</p>
+                <p class="year">2025</p>
             </div>
         </div>
         <div id="game-ui">
