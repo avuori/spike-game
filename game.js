@@ -847,8 +847,22 @@ function update() {
 
     // Update obstacles
     for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].x -= getGameSpeed();
-        if (obstacles[i].x + OBSTACLE_WIDTH < 0) {
+        const obstacle = obstacles[i];
+        obstacle.x -= getGameSpeed();
+        
+        // Update spike animations
+        obstacle.animationOffset += 0.05;
+        
+        // Update glow intensity for special spikes
+        if (obstacle.type === 'fire') {
+            obstacle.glowIntensity = Math.sin(obstacle.animationOffset * 2) * 0.3 + 0.7;
+        } else if (obstacle.type === 'crystal') {
+            obstacle.glowIntensity = Math.sin(obstacle.animationOffset) * 0.2 + 0.8;
+        } else if (obstacle.type === 'ice') {
+            obstacle.glowIntensity = Math.sin(obstacle.animationOffset * 0.5) * 0.15 + 0.6;
+        }
+        
+        if (obstacle.x + OBSTACLE_WIDTH < 0) {
             obstacles.splice(i, 1);
         }
     }
@@ -868,11 +882,19 @@ function update() {
 // Spawn obstacle (spike)
 function spawnObstacle() {
     const y = Math.random() * (CANVAS_HEIGHT - OBSTACLE_HEIGHT);
+    
+    // Add variety to spikes
+    const spikeTypes = ['normal', 'crystal', 'fire', 'ice'];
+    const spikeType = spikeTypes[Math.floor(Math.random() * spikeTypes.length)];
+    
     obstacles.push({
         x: CANVAS_WIDTH,
         y: y,
         width: OBSTACLE_WIDTH,
-        height: OBSTACLE_HEIGHT
+        height: OBSTACLE_HEIGHT,
+        type: spikeType,
+        animationOffset: Math.random() * Math.PI * 2, // For animated effects
+        glowIntensity: 0
     });
 }
 
@@ -1489,27 +1511,174 @@ function drawCharacter() {
     ctx.restore();
 }
 
-// Draw enhanced obstacles (optimized for mobile)
+// Draw beautiful 3D spikes with various types and effects
 function drawEnhancedObstacles() {
     for (let obstacle of obstacles) {
-        // Simplified shadow - removed for performance
-        // Main obstacle with solid color (simplified from gradient)
-        ctx.fillStyle = '#0080FF';
+        const centerX = obstacle.x + obstacle.width / 2;
+        const topY = obstacle.y;
+        const bottomY = obstacle.y + obstacle.height;
+        const leftX = obstacle.x;
+        const rightX = obstacle.x + obstacle.width;
+
+        // Drop shadow for depth
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
-        ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
-        ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+        ctx.moveTo(leftX + 2, bottomY + 2);
+        ctx.lineTo(centerX + 2, topY + 2);
+        ctx.lineTo(rightX + 2, bottomY + 2);
         ctx.closePath();
         ctx.fill();
 
-        // Simple highlight - reduced
-        ctx.strokeStyle = '#00BFFF';
-        ctx.lineWidth = 1.5; // Reduced line width
+        // Different spike types with unique styles
+        let gradient, glowColor, tipColor, shadowColor;
+        
+        switch (obstacle.type) {
+            case 'fire':
+                gradient = ctx.createLinearGradient(leftX, topY, rightX, bottomY);
+                gradient.addColorStop(0, '#FFD700');  // Gold
+                gradient.addColorStop(0.3, '#FF8C00'); // Dark orange
+                gradient.addColorStop(0.7, '#FF4500'); // Red orange
+                gradient.addColorStop(1, '#8B0000');   // Dark red
+                glowColor = '#FF4500';
+                tipColor = '#FFFF00';
+                shadowColor = '#8B4513';
+                break;
+                
+            case 'crystal':
+                gradient = ctx.createLinearGradient(leftX, topY, rightX, bottomY);
+                gradient.addColorStop(0, '#E6E6FA');  // Lavender
+                gradient.addColorStop(0.3, '#9370DB'); // Medium purple
+                gradient.addColorStop(0.7, '#663399'); // Rebecca purple
+                gradient.addColorStop(1, '#4B0082');   // Indigo
+                glowColor = '#9370DB';
+                tipColor = '#FFFFFF';
+                shadowColor = '#301934';
+                break;
+                
+            case 'ice':
+                gradient = ctx.createLinearGradient(leftX, topY, rightX, bottomY);
+                gradient.addColorStop(0, '#F0F8FF');  // Alice blue
+                gradient.addColorStop(0.3, '#87CEEB'); // Sky blue
+                gradient.addColorStop(0.7, '#4682B4'); // Steel blue
+                gradient.addColorStop(1, '#191970');   // Midnight blue
+                glowColor = '#87CEEB';
+                tipColor = '#FFFFFF';
+                shadowColor = '#2F4F4F';
+                break;
+                
+            default: // normal metallic
+                gradient = ctx.createLinearGradient(leftX, topY, rightX, bottomY);
+                gradient.addColorStop(0, '#C0C0C0');  // Silver light
+                gradient.addColorStop(0.3, '#808080'); // Medium gray
+                gradient.addColorStop(0.7, '#404040'); // Dark gray
+                gradient.addColorStop(1, '#202020');   // Almost black
+                glowColor = '#FF4444';
+                tipColor = '#FFFFFF';
+                shadowColor = '#404040';
+                break;
+        }
+        
+        // Main spike body with type-specific gradient
+        ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y);
-        ctx.lineTo(obstacle.x + obstacle.width / 2 + 3, obstacle.y + 6); // Shorter highlight
+        ctx.moveTo(leftX, bottomY);
+        ctx.lineTo(centerX, topY);
+        ctx.lineTo(rightX, bottomY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Left edge highlight (3D effect)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(leftX, bottomY);
+        ctx.lineTo(centerX, topY);
         ctx.stroke();
+
+        // Right edge shadow (3D effect)
+        ctx.strokeStyle = shadowColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(centerX, topY);
+        ctx.lineTo(rightX, bottomY);
+        ctx.stroke();
+
+        // Sharp tip highlight
+        ctx.fillStyle = tipColor;
+        ctx.beginPath();
+        ctx.arc(centerX, topY, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Type-specific glow effects
+        if (obstacle.glowIntensity > 0) {
+            ctx.save();
+            ctx.shadowColor = glowColor;
+            ctx.shadowBlur = 8 * obstacle.glowIntensity;
+            ctx.strokeStyle = `rgba(${hexToRgb(glowColor).r}, ${hexToRgb(glowColor).g}, ${hexToRgb(glowColor).b}, ${0.4 * obstacle.glowIntensity})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(leftX, bottomY);
+            ctx.lineTo(centerX, topY);
+            ctx.lineTo(rightX, bottomY);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Special effects for certain types
+        if (obstacle.type === 'fire') {
+            // Flickering particles around fire spikes
+            if (Math.random() < 0.3) {
+                for (let i = 0; i < 3; i++) {
+                    const sparkX = centerX + (Math.random() - 0.5) * obstacle.width;
+                    const sparkY = topY + Math.random() * obstacle.height * 0.3;
+                    ctx.fillStyle = `rgba(255, ${100 + Math.random() * 155}, 0, ${Math.random()})`;
+                    ctx.beginPath();
+                    ctx.arc(sparkX, sparkY, Math.random() * 2 + 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        } else if (obstacle.type === 'crystal') {
+            // Crystal facets
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(leftX + obstacle.width * 0.25, bottomY - obstacle.height * 0.3);
+            ctx.lineTo(centerX, topY + obstacle.height * 0.2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(rightX - obstacle.width * 0.25, bottomY - obstacle.height * 0.3);
+            ctx.lineTo(centerX, topY + obstacle.height * 0.2);
+            ctx.stroke();
+        } else if (obstacle.type === 'ice') {
+            // Ice shards
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            for (let i = 0; i < 2; i++) {
+                const shardX = centerX + (Math.random() - 0.5) * obstacle.width * 0.8;
+                const shardY = topY + Math.random() * obstacle.height * 0.6;
+                ctx.beginPath();
+                ctx.arc(shardX, shardY, Math.random() * 1.5 + 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Base platform (ground connection)
+        ctx.fillStyle = '#606060';
+        ctx.fillRect(leftX - 1, bottomY, obstacle.width + 2, 3);
+        
+        // Base platform highlight
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(leftX - 1, bottomY, obstacle.width + 2, 1);
     }
+}
+
+// Helper function to convert hex color to RGB
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 255, g: 68, b: 68 }; // Default to red if parsing fails
 }
 
 // Draw perfect heart shape using mathematical curve
