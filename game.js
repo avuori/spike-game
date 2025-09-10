@@ -1255,100 +1255,213 @@ function drawCharacter() {
     ctx.restore();
 }
 
-// Draw hurricane with enhanced visual effects
+// Draw realistic hurricane with spiral patterns and enhanced effects
 function drawHurricane(hurricane) {
     const centerX = hurricane.x + hurricane.size / 2;
     const centerY = hurricane.y + hurricane.size / 2;
+    const time = Date.now() * 0.001;
 
     // Calculate movement intensity for visual effects
-    const movementIntensity = Math.abs(Math.sin(Date.now() * hurricane.verticalSpeed + hurricane.oscillationOffset));
+    const movementIntensity = Math.abs(Math.sin(time * hurricane.verticalSpeed + hurricane.oscillationOffset));
+    const rotationSpeed = hurricane.rotation;
 
     ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(hurricane.rotation);
 
-    // Outer storm clouds (dark gray) - opacity varies with movement
-    const outerOpacity = 0.6 + movementIntensity * 0.3;
-    ctx.fillStyle = `rgba(47, 79, 79, ${outerOpacity})`;
+    // Outer atmospheric disturbance with gradient
+    const outerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, hurricane.size * 0.8);
+    outerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    outerGradient.addColorStop(0.7, `rgba(47, 79, 79, ${0.2 + movementIntensity * 0.1})`);
+    outerGradient.addColorStop(1, `rgba(47, 79, 79, ${0.4 + movementIntensity * 0.2})`);
+    ctx.fillStyle = outerGradient;
     ctx.beginPath();
-    ctx.arc(0, 0, hurricane.size / 2, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, hurricane.size * 0.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Inner swirling clouds (lighter gray) - more dynamic
-    ctx.fillStyle = 'rgba(105, 105, 105, 0.7)';
-    for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3 + hurricane.rotation;
-        const distance = hurricane.size / 4 + Math.sin(Date.now() * 0.01 + i) * 5;
+    // Main hurricane body with realistic spiral clouds
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotationSpeed);
+
+    // Draw multiple spiral arms like a real hurricane
+    for (let arm = 0; arm < 4; arm++) {
+        const armAngle = (arm * Math.PI) / 2;
+        
+        // Create spiral path
         ctx.beginPath();
-        ctx.arc(
-            Math.cos(angle) * distance,
-            Math.sin(angle) * distance,
-            hurricane.size / 6 + Math.sin(Date.now() * 0.005 + i) * 2,
-            0,
-            Math.PI * 2
-        );
-        ctx.fill();
+        ctx.strokeStyle = `rgba(105, 105, 105, ${0.6 + movementIntensity * 0.3})`;
+        ctx.lineWidth = hurricane.size / 8;
+        ctx.lineCap = 'round';
+        
+        for (let t = 0; t <= 3; t += 0.1) {
+            const spiralRadius = (hurricane.size / 2) * (1 - t / 3) * 0.8;
+            const spiralAngle = armAngle + t * Math.PI * 1.5 + time * 0.5;
+            const x = Math.cos(spiralAngle) * spiralRadius;
+            const y = Math.sin(spiralAngle) * spiralRadius;
+            
+            if (t === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.stroke();
+        
+        // Add denser cloud clusters along spiral arms
+        for (let cluster = 0; cluster < 3; cluster++) {
+            const t = (cluster + 1) * 0.8;
+            const spiralRadius = (hurricane.size / 2) * (1 - t / 3) * 0.8;
+            const spiralAngle = armAngle + t * Math.PI * 1.5 + time * 0.5;
+            const x = Math.cos(spiralAngle) * spiralRadius;
+            const y = Math.sin(spiralAngle) * spiralRadius;
+            
+            ctx.fillStyle = `rgba(70, 70, 70, ${0.7 + Math.sin(time * 2 + cluster) * 0.2})`;
+            ctx.beginPath();
+            ctx.arc(x, y, hurricane.size / 12, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
-    // Eye of the storm (lighter center) - pulsing effect
-    const eyeOpacity = 0.3 + movementIntensity * 0.4;
-    ctx.fillStyle = `rgba(169, 169, 169, ${eyeOpacity})`;
+    // Dense inner storm wall
+    const wallGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, hurricane.size / 3);
+    wallGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    wallGradient.addColorStop(0.8, `rgba(40, 40, 40, ${0.8 + movementIntensity * 0.2})`);
+    wallGradient.addColorStop(1, `rgba(20, 20, 20, ${0.9 + movementIntensity * 0.1})`);
+    ctx.fillStyle = wallGradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, hurricane.size / 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye of the storm - realistic clear center
+    const eyeGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, hurricane.size / 8);
+    eyeGradient.addColorStop(0, `rgba(135, 206, 235, ${0.4 + movementIntensity * 0.3})`); // Sky blue center
+    eyeGradient.addColorStop(0.7, `rgba(169, 169, 169, ${0.3 + movementIntensity * 0.2})`);
+    eyeGradient.addColorStop(1, 'rgba(40, 40, 40, 0.8)');
+    ctx.fillStyle = eyeGradient;
     ctx.beginPath();
     ctx.arc(0, 0, hurricane.size / 8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Lightning effects (more frequent and varied)
-    if (Math.random() < 0.4 || movementIntensity > 0.8) {
-        ctx.strokeStyle = '#FFFF00';
-        ctx.lineWidth = 2 + movementIntensity * 2;
+    // Enhanced lightning with branching patterns
+    if (Math.random() < 0.5 || movementIntensity > 0.7) {
+        ctx.save();
+        ctx.shadowColor = '#FFFF00';
+        ctx.shadowBlur = 15;
+        
+        // Main lightning bolt
+        ctx.strokeStyle = `rgba(255, 255, 0, ${0.8 + movementIntensity * 0.2})`;
+        ctx.lineWidth = 2 + movementIntensity * 3;
+        ctx.lineCap = 'round';
+        
+        // Create realistic jagged lightning
+        const lightningPoints = [];
+        const startAngle = Math.random() * Math.PI * 2;
+        const startRadius = hurricane.size / 6;
+        const endRadius = hurricane.size / 2.5;
+        
+        lightningPoints.push({
+            x: Math.cos(startAngle) * startRadius,
+            y: Math.sin(startAngle) * startRadius
+        });
+        
+        // Create jagged path
+        for (let i = 1; i < 6; i++) {
+            const progress = i / 5;
+            const radius = startRadius + (endRadius - startRadius) * progress;
+            const angle = startAngle + (Math.random() - 0.5) * 0.5;
+            const jitter = (Math.random() - 0.5) * hurricane.size / 8;
+            
+            lightningPoints.push({
+                x: Math.cos(angle) * radius + jitter,
+                y: Math.sin(angle) * radius + jitter
+            });
+        }
+        
         ctx.beginPath();
-
-        // Random lightning pattern
-        const lightningType = Math.floor(Math.random() * 3);
-        if (lightningType === 0) {
-            // Diagonal lightning
-            ctx.moveTo(-hurricane.size / 4, -hurricane.size / 4);
-            ctx.lineTo(hurricane.size / 4, hurricane.size / 4);
-        } else if (lightningType === 1) {
-            // Vertical lightning
-            ctx.moveTo(0, -hurricane.size / 3);
-            ctx.lineTo(0, hurricane.size / 3);
-        } else {
-            // Horizontal lightning
-            ctx.moveTo(-hurricane.size / 3, 0);
-            ctx.lineTo(hurricane.size / 3, 0);
+        ctx.moveTo(lightningPoints[0].x, lightningPoints[0].y);
+        for (let i = 1; i < lightningPoints.length; i++) {
+            ctx.lineTo(lightningPoints[i].x, lightningPoints[i].y);
         }
         ctx.stroke();
+        
+        // Add branching bolts
+        if (Math.random() < 0.6) {
+            const branchStart = Math.floor(Math.random() * (lightningPoints.length - 2)) + 1;
+            const branchPoint = lightningPoints[branchStart];
+            const branchAngle = Math.random() * Math.PI * 2;
+            const branchLength = hurricane.size / 6;
+            
+            ctx.beginPath();
+            ctx.moveTo(branchPoint.x, branchPoint.y);
+            ctx.lineTo(
+                branchPoint.x + Math.cos(branchAngle) * branchLength,
+                branchPoint.y + Math.sin(branchAngle) * branchLength
+            );
+            ctx.stroke();
+        }
+        
+        ctx.restore();
     }
 
     ctx.restore();
 
-    // Enhanced wind effect lines - more dynamic
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.lineWidth = 1 + movementIntensity;
-    for (let i = 0; i < 10; i++) {
-        const angle = (i * Math.PI) / 5 + hurricane.rotation * 2 + movementIntensity * Math.PI;
-        const startDistance = hurricane.size / 2 + 10;
-        const endDistance = hurricane.size / 2 + 30 + movementIntensity * 20;
-
+    // Swirling debris and wind effects
+    ctx.save();
+    for (let i = 0; i < 15; i++) {
+        const debrisAngle = (i * Math.PI * 2) / 15 + rotationSpeed * 3 + time;
+        const debrisRadius = hurricane.size / 2 + Math.sin(time * 2 + i) * 20;
+        const debrisX = centerX + Math.cos(debrisAngle) * debrisRadius;
+        const debrisY = centerY + Math.sin(debrisAngle) * debrisRadius;
+        
+        // Wind streak
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(time * 3 + i) * 0.2})`;
+        ctx.lineWidth = 1 + movementIntensity;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(
-            centerX + Math.cos(angle) * startDistance,
-            centerY + Math.sin(angle) * startDistance
-        );
+        
+        const streakLength = 15 + movementIntensity * 10;
+        ctx.moveTo(debrisX, debrisY);
         ctx.lineTo(
-            centerX + Math.cos(angle) * endDistance,
-            centerY + Math.sin(angle) * endDistance
+            debrisX + Math.cos(debrisAngle + Math.PI) * streakLength,
+            debrisY + Math.sin(debrisAngle + Math.PI) * streakLength
         );
         ctx.stroke();
+        
+        // Flying debris
+        if (Math.random() < 0.4) {
+            ctx.fillStyle = `rgba(139, 69, 19, ${0.6 + Math.random() * 0.4})`; // Brown debris
+            ctx.beginPath();
+            ctx.arc(debrisX, debrisY, 1 + Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    ctx.restore();
+
+    // Pressure wave effect for powerful hurricanes
+    if (movementIntensity > 0.6) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(135, 206, 235, ${0.3 * movementIntensity})`;
+        ctx.lineWidth = 2;
+        const waveRadius = hurricane.size * 0.9 + Math.sin(time * 4) * 10;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, waveRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
 
-    // Add trailing effect for movement visibility
-    if (hurricane.horizontalSpeed > getGameSpeed() * 0.9) {
-        ctx.fillStyle = 'rgba(47, 79, 79, 0.2)';
+    // Motion blur trail for fast-moving hurricanes
+    if (hurricane.horizontalSpeed > getGameSpeed() * 0.8) {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        const trailGradient = ctx.createRadialGradient(
+            centerX + 25, centerY, 0,
+            centerX + 25, centerY, hurricane.size / 2
+        );
+        trailGradient.addColorStop(0, 'rgba(47, 79, 79, 0.4)');
+        trailGradient.addColorStop(1, 'rgba(47, 79, 79, 0)');
+        ctx.fillStyle = trailGradient;
         ctx.beginPath();
-        ctx.arc(centerX + 20, centerY, hurricane.size / 3, 0, Math.PI * 2);
+        ctx.arc(centerX + 25, centerY, hurricane.size / 2, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
     }
 }
 
