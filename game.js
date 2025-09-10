@@ -1114,15 +1114,29 @@ function drawParticles() {
             ctx.fill();
             ctx.shadowBlur = 0;
         } else if (particle.type === 'heart') {
-            // Heart-shaped particles
+            // Perfect heart-shaped particles
             ctx.fillStyle = particle.color;
+            
+            // Use the same mathematical heart equation but smaller scale
+            const scale = particle.size / 25;
             ctx.beginPath();
-            ctx.arc(-particle.size * 0.3, -particle.size * 0.3, particle.size * 0.4, 0, Math.PI * 2);
+            
+            for (let t = 0; t <= Math.PI * 2; t += 0.2) { // Slightly lower resolution for particles
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                
+                const scaledX = x * scale;
+                const scaledY = y * scale;
+                
+                if (t === 0) {
+                    ctx.moveTo(scaledX, scaledY);
+                } else {
+                    ctx.lineTo(scaledX, scaledY);
+                }
+            }
+            
+            ctx.closePath();
             ctx.fill();
-            ctx.beginPath();
-            ctx.arc(particle.size * 0.3, -particle.size * 0.3, particle.size * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillRect(-particle.size * 0.6, -particle.size * 0.1, particle.size * 1.2, particle.size * 0.8);
         } else if (particle.type === 'powerup') {
             // Power-up particles - star shapes
             ctx.fillStyle = particle.color;
@@ -1498,34 +1512,62 @@ function drawEnhancedObstacles() {
     }
 }
 
+// Draw perfect heart shape using mathematical curve
+function drawPerfectHeart(centerX, centerY, size, fillStyle, glowStyle = null) {
+    ctx.save();
+    
+    // Add glow effect if provided
+    if (glowStyle) {
+        ctx.fillStyle = glowStyle;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, size * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    ctx.fillStyle = fillStyle;
+    ctx.beginPath();
+    
+    // Mathematical heart equation: x = 16sin³(t), y = 13cos(t) - 5cos(2t) - 2cos(3t) - cos(4t)
+    // Scale and position the heart
+    const scale = size / 20;
+    
+    for (let t = 0; t <= Math.PI * 2; t += 0.1) {
+        const x = 16 * Math.pow(Math.sin(t), 3);
+        const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+        
+        const scaledX = centerX + x * scale;
+        const scaledY = centerY + y * scale;
+        
+        if (t === 0) {
+            ctx.moveTo(scaledX, scaledY);
+        } else {
+            ctx.lineTo(scaledX, scaledY);
+        }
+    }
+    
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}
+
 // Draw enhanced hearts (optimized for mobile)
 function drawEnhancedHearts() {
     for (let heart of hearts) {
         const time = Date.now() * 0.003; // Slower pulse for better performance
         const pulse = Math.sin(time + heart.x * 0.005) * 0.05 + 0.95; // Reduced pulse effect
 
-        // Simplified glow effect
-        ctx.fillStyle = `rgba(255, 105, 180, ${0.4 * pulse})`;
-        ctx.beginPath();
-        ctx.arc(heart.x + heart.width / 2, heart.y + heart.height / 2, heart.width / 2 + 3, 0, Math.PI * 2);
-        ctx.fill();
+        const centerX = heart.x + heart.width / 2;
+        const centerY = heart.y + heart.height / 2;
+        const heartSize = Math.min(heart.width, heart.height) * 0.4;
 
-        // Main heart with solid color (simplified from gradient)
-        ctx.fillStyle = '#FF69B4';
-
-        // Draw heart shape - simplified
-        ctx.beginPath();
-        ctx.arc(heart.x + heart.width * 0.3, heart.y + heart.height * 0.3, heart.width * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(heart.x + heart.width * 0.7, heart.y + heart.height * 0.3, heart.width * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillRect(heart.x + heart.width * 0.22, heart.y + heart.height * 0.33, heart.width * 0.56, heart.height * 0.37);
+        // Draw perfect heart with glow
+        const glowStyle = `rgba(255, 105, 180, ${0.3 * pulse})`;
+        drawPerfectHeart(centerX, centerY, heartSize, '#FF69B4', glowStyle);
 
         // Simple highlight
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.beginPath();
-        ctx.arc(heart.x + heart.width * 0.4, heart.y + heart.height * 0.4, heart.width * 0.08, 0, Math.PI * 2);
+        ctx.arc(centerX - heartSize * 0.15, centerY - heartSize * 0.1, heartSize * 0.08, 0, Math.PI * 2);
         ctx.fill();
     }
 }
