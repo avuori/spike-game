@@ -351,6 +351,49 @@
             background: #45a049;
         }
 
+        #bomb-container {
+            position: fixed;
+            bottom: max(3vh, 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 150;
+            display: none;
+        }
+
+        .bomb-button {
+            width: max(8vh, 60px);
+            height: max(8vh, 60px);
+            border-radius: 50%;
+            border: 3px solid #FFD700;
+            background: linear-gradient(135deg, #FF4500, #FF8C00);
+            color: white;
+            font-size: max(4vh, 28px);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 69, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+        }
+
+        .bomb-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(255, 69, 0, 0.6);
+            border-color: #FFA500;
+        }
+
+        .bomb-button:active {
+            transform: scale(0.95);
+            transition: all 0.1s ease;
+        }
+
+        .bomb-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
         /* Adjustments for very small screens */
         @media (max-width: 480px) {
             .character-options-container {
@@ -475,6 +518,9 @@
         <div id="game-ui">
             <div>Score: <span id="score">0</span></div>
             <div>Speed: <span id="speed-display">1.0x</span></div>
+        </div>
+        <div id="bomb-container">
+            <button id="bomb-btn" class="bomb-button">💣</button>
         </div>
         <div id="game-over">
             <h2>Game Over!</h2>

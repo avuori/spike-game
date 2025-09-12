@@ -30,6 +30,10 @@ let score = 0;
 let activePowerUps = [];
 let powerUpSpawnTimer = 0;
 
+// Bomb system
+let bombExplosion = null;
+let bombCount = 0; // Number of bombs collected
+
 // Game objects
 let character = {
     x: 100,
@@ -65,7 +69,7 @@ let backgroundElements = [];
 
 // DOM elements (initialized in init() function)
 let canvas, ctx, menuScreen, gameUI, gameOver;
-let scoreElement, finalScoreElement, restartBtn, musicToggleBtn, speedDisplayElement;
+let scoreElement, finalScoreElement, restartBtn, musicToggleBtn, speedDisplayElement, bombBtn;
 
 // Audio context for sound effects
 let audioContext = null;
@@ -185,6 +189,7 @@ function init() {
     restartBtn = document.getElementById('restart-btn');
     musicToggleBtn = document.getElementById('music-toggle');
     speedDisplayElement = document.getElementById('speed-display');
+    bombBtn = document.getElementById('bomb-btn');
 
     // Resize canvas initially
     resizeCanvas();
@@ -203,6 +208,7 @@ function init() {
     document.addEventListener('touchstart', handleDocumentTouchStart, { passive: false });
     restartBtn.addEventListener('click', restartGame);
     //musicToggleBtn.addEventListener('click', toggleMusic);
+    bombBtn.addEventListener('click', launchBomb);
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('orientationchange', () => {
         // Delay resize to allow for orientation change to complete
@@ -233,12 +239,17 @@ function selectCharacter(characterType) {
         gameState = 'playing';
         menuScreen.style.display = 'none';
         gameUI.style.display = 'block';
+        // Show bomb button during gameplay
+        if (document.getElementById('bomb-container')) {
+            document.getElementById('bomb-container').style.display = 'block';
+        }
         // Start background music when game begins (if enabled)
         if (musicEnabled) {
             startBackgroundMusic();
         }
         // Initialize speed display
         updateSpeedDisplay();
+        updateBombButton();
     };
 }
 
@@ -350,7 +361,8 @@ function createPowerUpParticles(x, y, type) {
         shield: '#00FF00',
         speed: '#FFFF00',
         magnet: '#FF00FF',
-        rainbow: '#FF6B35'
+        rainbow: '#FF6B35',
+        bomb: '#FF4500'
     };
 
     const color = colors[type] || '#FFFFFF';
@@ -374,6 +386,14 @@ function createPowerUpParticles(x, y, type) {
 
 // Activate power-up
 function activatePowerUp(type) {
+    if (type === 'bomb') {
+        // Add bomb to inventory instead of activating immediately
+        bombCount++;
+        updateBombButton();
+        playPowerUpSound();
+        return;
+    }
+
     const powerUp = {
         type: type,
         duration: 500, // frames
@@ -399,10 +419,22 @@ function activatePowerUp(type) {
 
 // Spawn power-up
 function spawnPowerUp() {
-    const types = ['shield', 'speed', 'magnet', 'rainbow'];
+    const types = ['shield', 'speed', 'magnet', 'rainbow', 'bomb'];
     const type = types[Math.floor(Math.random() * types.length)];
 
-    const y = Math.random() * (CANVAS_HEIGHT - 40);
+    let attempts = 0;
+    let y;
+    
+    do {
+        y = Math.random() * (CANVAS_HEIGHT - 40);
+        attempts++;
+    } while (checkSpawnCollision(CANVAS_WIDTH, y, 40, 40) && attempts < 10);
+    
+    // If we couldn't find a good spot after 10 attempts, spawn anyway
+    if (attempts >= 10) {
+        y = Math.random() * (CANVAS_HEIGHT - 40);
+    }
+
     powerUps.push({
         x: CANVAS_WIDTH,
         y: y,
@@ -435,6 +467,197 @@ function playPowerUpSound() {
     }
 }
 
+// Launch bomb function
+function launchBomb() {
+    if (gameState !== 'playing' || bombCount <= 0) return;
+    
+    // Use one bomb from inventory
+    bombCount--;
+    updateBombButton();
+    
+    bombExplosion = {
+        x: CANVAS_WIDTH / 2,
+        y: CANVAS_HEIGHT / 2,
+        radius: 0,
+        maxRadius: Math.max(CANVAS_WIDTH, CANVAS_HEIGHT) * 0.8,
+        life: 60, // frames
+        maxLife: 60
+    };
+    
+    playBombSound();
+    
+    // Create initial explosion particles
+    for (let i = 0; i < 50; i++) {
+        const angle = (i / 50) * Math.PI * 2;
+        const speed = Math.random() * 15 + 10;
+        createParticle(
+            bombExplosion.x,
+            bombExplosion.y,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            '#FF4500',
+            Math.random() * 8 + 4,
+            Math.random() * 40 + 30,
+            'explosion'
+        );
+    }
+}
+
+// Play bomb explosion sound
+function playBombSound() {
+    if (audioContext) {
+        // Low frequency explosion rumble
+        const oscillator1 = audioContext.createOscillator();
+        const gainNode1 = audioContext.createGain();
+        const filter1 = audioContext.createBiquadFilter();
+
+        oscillator1.connect(filter1);
+        filter1.connect(gainNode1);
+        gainNode1.connect(audioContext.destination);
+
+        oscillator1.frequency.setValueAtTime(60, audioContext.currentTime);
+        oscillator1.frequency.exponentialRampToValueAtTime(20, audioContext.currentTime + 0.5);
+
+        filter1.type = 'lowpass';
+        filter1.frequency.setValueAtTime(200, audioContext.currentTime);
+
+        gainNode1.gain.setValueAtTime(0.6, audioContext.currentTime);
+        gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
+
+        oscillator1.start(audioContext.currentTime);
+        oscillator1.stop(audioContext.currentTime + 1.0);
+
+        // High frequency crack sound
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode2 = audioContext.createGain();
+
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(audioContext.destination);
+
+        oscillator2.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator2.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.2);
+
+        gainNode2.gain.setValueAtTime(0.4, audioContext.currentTime);
+        gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+        oscillator2.start(audioContext.currentTime);
+        oscillator2.stop(audioContext.currentTime + 0.3);
+    }
+}
+
+// Update bomb button appearance based on bomb count
+function updateBombButton() {
+    if (!bombBtn) return;
+    
+    if (bombCount > 0) {
+        bombBtn.style.display = 'flex';
+        bombBtn.style.opacity = '1';
+        bombBtn.style.filter = 'none';
+        bombBtn.textContent = `💣 ${bombCount}`;
+        bombBtn.disabled = false;
+    } else {
+        bombBtn.style.display = 'none';
+    }
+}
+
+// Destroy objects within explosion radius
+function destroyObjectsInExplosion() {
+    if (!bombExplosion) return;
+    
+    // Destroy obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        const centerX = obstacle.x + obstacle.width / 2;
+        const centerY = obstacle.y + obstacle.height / 2;
+        const distance = Math.sqrt(
+            Math.pow(centerX - bombExplosion.x, 2) + 
+            Math.pow(centerY - bombExplosion.y, 2)
+        );
+        
+        if (distance < bombExplosion.radius) {
+            // Create destruction particles
+            for (let j = 0; j < 8; j++) {
+                const angle = (j / 8) * Math.PI * 2;
+                const speed = Math.random() * 10 + 5;
+                createParticle(
+                    centerX,
+                    centerY,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    '#808080',
+                    Math.random() * 4 + 2,
+                    Math.random() * 25 + 15,
+                    'spark'
+                );
+            }
+            obstacles.splice(i, 1);
+        }
+    }
+    
+    // Destroy hearts
+    for (let i = hearts.length - 1; i >= 0; i--) {
+        const heart = hearts[i];
+        const centerX = heart.x + heart.width / 2;
+        const centerY = heart.y + heart.height / 2;
+        const distance = Math.sqrt(
+            Math.pow(centerX - bombExplosion.x, 2) + 
+            Math.pow(centerY - bombExplosion.y, 2)
+        );
+        
+        if (distance < bombExplosion.radius) {
+            // Create heart destruction particles
+            createHeartParticles(centerX, centerY);
+            hearts.splice(i, 1);
+        }
+    }
+    
+    // Destroy hurricanes
+    for (let i = hurricanes.length - 1; i >= 0; i--) {
+        const hurricane = hurricanes[i];
+        const centerX = hurricane.x + hurricane.size / 2;
+        const centerY = hurricane.y + hurricane.size / 2;
+        const distance = Math.sqrt(
+            Math.pow(centerX - bombExplosion.x, 2) + 
+            Math.pow(centerY - bombExplosion.y, 2)
+        );
+        
+        if (distance < bombExplosion.radius) {
+            // Create massive hurricane destruction effect
+            for (let j = 0; j < 20; j++) {
+                const angle = (j / 20) * Math.PI * 2;
+                const speed = Math.random() * 15 + 8;
+                createParticle(
+                    centerX,
+                    centerY,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    '#2F4F4F',
+                    Math.random() * 8 + 4,
+                    Math.random() * 40 + 30,
+                    'spark'
+                );
+            }
+            hurricanes.splice(i, 1);
+        }
+    }
+    
+    // Destroy power-ups
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+        const powerUp = powerUps[i];
+        const centerX = powerUp.x + powerUp.width / 2;
+        const centerY = powerUp.y + powerUp.height / 2;
+        const distance = Math.sqrt(
+            Math.pow(centerX - bombExplosion.x, 2) + 
+            Math.pow(centerY - bombExplosion.y, 2)
+        );
+        
+        if (distance < bombExplosion.radius) {
+            createPowerUpParticles(centerX, centerY, powerUp.type);
+            powerUps.splice(i, 1);
+        }
+    }
+}
+
 // Load character images
 function loadCharacterImages() {
     // Images are loaded when character is selected
@@ -444,12 +667,20 @@ function loadCharacterImages() {
 // Handle keyboard input
 function handleKeyPress(event) {
     if (gameState === 'playing') {
-        if (event.code === 'Space' || event.code === 'ArrowUp') {
+        if (event.code === 'Space') {
+            event.preventDefault();
+            // Space bar now launches bombs
+            launchBomb();
+        } else if (event.code === 'ArrowUp') {
             event.preventDefault();
             const jumpPower = character.speedBoost ? JUMP_FORCE * 1.3 : JUMP_FORCE;
             character.velocityY = jumpPower;
             playJumpSound();
             createJumpParticles();
+        } else if (event.code === 'KeyB') {
+            event.preventDefault();
+            // B key also launches bombs (alternative)
+            launchBomb();
         }
     } else if (gameState === 'gameOver' && event.code === 'Enter') {
         restartGame();
@@ -806,6 +1037,42 @@ function update() {
 
     if (gameState !== 'playing') return;
 
+    // Update bomb system (no cooldown needed for collectible bombs)
+
+    // Update bomb explosion
+    if (bombExplosion) {
+        bombExplosion.life--;
+        bombExplosion.radius = (1 - (bombExplosion.life / bombExplosion.maxLife)) * bombExplosion.maxRadius;
+        
+        // Destroy all objects within explosion radius
+        if (bombExplosion.life > bombExplosion.maxLife * 0.3) { // Only destroy during first 70% of explosion
+            destroyObjectsInExplosion();
+        }
+        
+        // Continue creating explosion particles
+        if (bombExplosion.life > bombExplosion.maxLife * 0.5) {
+            for (let i = 0; i < 5; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * bombExplosion.radius;
+                const speed = Math.random() * 8 + 3;
+                createParticle(
+                    bombExplosion.x + Math.cos(angle) * distance,
+                    bombExplosion.y + Math.sin(angle) * distance,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    Math.random() > 0.5 ? '#FF4500' : '#FFD700',
+                    Math.random() * 6 + 2,
+                    Math.random() * 30 + 20,
+                    'explosion'
+                );
+            }
+        }
+        
+        if (bombExplosion.life <= 0) {
+            bombExplosion = null;
+        }
+    }
+
     // Update character
     character.velocityY += GRAVITY;
     character.y += character.velocityY;
@@ -879,9 +1146,57 @@ function update() {
     checkCollisions();
 }
 
+// Check if position overlaps with existing items
+function checkSpawnCollision(x, y, width, height) {
+    const margin = 20; // Minimum distance between items
+    
+    // Check against obstacles
+    for (let obstacle of obstacles) {
+        if (x < obstacle.x + obstacle.width + margin &&
+            x + width + margin > obstacle.x &&
+            y < obstacle.y + obstacle.height + margin &&
+            y + height + margin > obstacle.y) {
+            return true;
+        }
+    }
+    
+    // Check against hearts
+    for (let heart of hearts) {
+        if (x < heart.x + heart.width + margin &&
+            x + width + margin > heart.x &&
+            y < heart.y + heart.height + margin &&
+            y + height + margin > heart.y) {
+            return true;
+        }
+    }
+    
+    // Check against power-ups
+    for (let powerUp of powerUps) {
+        if (x < powerUp.x + powerUp.width + margin &&
+            x + width + margin > powerUp.x &&
+            y < powerUp.y + powerUp.height + margin &&
+            y + height + margin > powerUp.y) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // Spawn obstacle (spike)
 function spawnObstacle() {
-    const y = Math.random() * (CANVAS_HEIGHT - OBSTACLE_HEIGHT);
+    let attempts = 0;
+    let y;
+    
+    do {
+        y = Math.random() * (CANVAS_HEIGHT - OBSTACLE_HEIGHT);
+        attempts++;
+    } while (checkSpawnCollision(CANVAS_WIDTH, y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT) && attempts < 10);
+    
+    // If we couldn't find a good spot after 10 attempts, spawn anyway
+    if (attempts >= 10) {
+        y = Math.random() * (CANVAS_HEIGHT - OBSTACLE_HEIGHT);
+    }
     
     // Add variety to spikes
     const spikeTypes = ['normal', 'crystal', 'fire', 'ice'];
@@ -900,7 +1215,19 @@ function spawnObstacle() {
 
 // Spawn heart
 function spawnHeart() {
-    const y = Math.random() * (CANVAS_HEIGHT - HEART_SIZE);
+    let attempts = 0;
+    let y;
+    
+    do {
+        y = Math.random() * (CANVAS_HEIGHT - HEART_SIZE);
+        attempts++;
+    } while (checkSpawnCollision(CANVAS_WIDTH, y, HEART_SIZE, HEART_SIZE) && attempts < 10);
+    
+    // If we couldn't find a good spot after 10 attempts, spawn anyway
+    if (attempts >= 10) {
+        y = Math.random() * (CANVAS_HEIGHT - HEART_SIZE);
+    }
+    
     hearts.push({
         x: CANVAS_WIDTH,
         y: y,
@@ -1016,6 +1343,10 @@ function gameOverFunction() {
     if (finalScoreElement) finalScoreElement.textContent = score;
     gameOver.style.display = 'block';
     gameUI.style.display = 'none';
+    // Hide bomb button during game over
+    if (document.getElementById('bomb-container')) {
+        document.getElementById('bomb-container').style.display = 'none';
+    }
 
     // Stop background music
     stopBackgroundMusic();
@@ -1057,6 +1388,11 @@ function restartGame() {
     activePowerUps = [];
     powerUpSpawnTimer = 0;
 
+    // Reset bomb system
+    bombExplosion = null;
+    bombCount = 0;
+    updateBombButton();
+
     // Stop background music when returning to menu
     stopBackgroundMusic();
 
@@ -1064,6 +1400,10 @@ function restartGame() {
     menuScreen.style.display = 'flex';
     gameUI.style.display = 'none';
     gameOver.style.display = 'none';
+    // Hide bomb button in menu
+    if (document.getElementById('bomb-container')) {
+        document.getElementById('bomb-container').style.display = 'none';
+    }
 
     // Reinitialize audio
     try {
@@ -1182,6 +1522,15 @@ function drawParticles() {
             // Add glow
             ctx.shadowColor = particle.color;
             ctx.shadowBlur = particle.size * 2;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        } else if (particle.type === 'explosion') {
+            // Explosion particles - bright orange/red bursts
+            ctx.fillStyle = particle.color;
+            ctx.shadowColor = particle.color;
+            ctx.shadowBlur = particle.size * 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
         }
@@ -1511,8 +1860,65 @@ function render() {
         drawHurricane(hurricane);
     }
 
+    // Draw bomb explosion
+    if (bombExplosion) {
+        drawBombExplosion();
+    }
+
     // Draw particles on top of everything
     drawParticles();
+}
+
+// Draw bomb explosion effect
+function drawBombExplosion() {
+    if (!bombExplosion) return;
+    
+    const alpha = bombExplosion.life / bombExplosion.maxLife;
+    
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.6;
+    
+    // Outer explosion ring
+    const outerGradient = ctx.createRadialGradient(
+        bombExplosion.x, bombExplosion.y, 0,
+        bombExplosion.x, bombExplosion.y, bombExplosion.radius
+    );
+    outerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+    outerGradient.addColorStop(0.3, 'rgba(255, 165, 0, 0.6)');
+    outerGradient.addColorStop(0.7, 'rgba(255, 69, 0, 0.4)');
+    outerGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    
+    ctx.fillStyle = outerGradient;
+    ctx.beginPath();
+    ctx.arc(bombExplosion.x, bombExplosion.y, bombExplosion.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Inner core
+    ctx.globalAlpha = alpha * 0.9;
+    const coreGradient = ctx.createRadialGradient(
+        bombExplosion.x, bombExplosion.y, 0,
+        bombExplosion.x, bombExplosion.y, bombExplosion.radius * 0.3
+    );
+    coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    coreGradient.addColorStop(0.5, 'rgba(255, 255, 0, 0.8)');
+    coreGradient.addColorStop(1, 'rgba(255, 165, 0, 0.3)');
+    
+    ctx.fillStyle = coreGradient;
+    ctx.beginPath();
+    ctx.arc(bombExplosion.x, bombExplosion.y, bombExplosion.radius * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Shockwave ring
+    if (bombExplosion.life > bombExplosion.maxLife * 0.8) {
+        ctx.globalAlpha = (bombExplosion.life / bombExplosion.maxLife) * 0.8;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(bombExplosion.x, bombExplosion.y, bombExplosion.radius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    
+    ctx.restore();
 }
 
 // Draw enhanced clouds (optimized for mobile)
@@ -1548,7 +1954,8 @@ function drawPowerUps() {
             shield: '#00FF00',
             speed: '#FFFF00',
             magnet: '#FF00FF',
-            rainbow: '#FF6B35'
+            rainbow: '#FF6B35',
+            bomb: '#FF4500'
         };
 
         const color = colors[powerUp.type] || '#FFFFFF';
@@ -1584,7 +1991,8 @@ function drawPowerUps() {
             shield: '🛡️',
             speed: '⚡',
             magnet: '🧲',
-            rainbow: '🌈'
+            rainbow: '🌈',
+            bomb: '💣'
         };
 
         ctx.fillText(symbols[powerUp.type] || '⭐', 0, 0);
