@@ -247,6 +247,8 @@ function selectCharacter(characterType) {
         if (musicEnabled) {
             startBackgroundMusic();
         }
+        // Give player one bomb at start
+        bombCount = 1;
         // Initialize speed display
         updateSpeedDisplay();
         updateBombButton();
@@ -553,7 +555,7 @@ function updateBombButton() {
         bombBtn.style.display = 'flex';
         bombBtn.style.opacity = '1';
         bombBtn.style.filter = 'none';
-        bombBtn.textContent = `💣 ${bombCount}`;
+        bombBtn.textContent = '💣';
         bombBtn.disabled = false;
     } else {
         bombBtn.style.display = 'none';
